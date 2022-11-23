@@ -2,7 +2,7 @@
 # EDHM_UI
 if (!(Get-Process -Name EDHM*)) { Start-Process -WindowStyle Maximized -ErrorAction Continue -FilePath 'C:\Users\Quadstronaut\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe' }
 # VoiceAttack
-# if (Get-Process -Name VoiceAttack) { $true } else { Start-Process -WindowStyle Maximized -ErrorAction Continue -FilePath "C:\Program Files\VoiceAttack\VoiceAttack.exe" }
+if (Get-Process -Name VoiceAttack) { $true } else { Start-Process -WindowStyle Maximized -ErrorAction Continue -FilePath "C:\Program Files\VoiceAttack\VoiceAttack.exe" }
 
 ### Community Data ###
 # ED Market Connector
