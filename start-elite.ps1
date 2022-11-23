@@ -1,8 +1,7 @@
-#### User Configuration ####
-
-<# For each of the following programs, set them to true or false to determine if the script will attempt to launch them or not.
-The script will automatically ignore lines for software that does not exist on your machine. #>
-
+<#### User Configuration ####
+For each of the following programs, set them to true or false to determine if the script will attempt to launch them or not.
+The script will automatically ignore lines for software that does not exist on your machine.
+#>
 $EDHM_UI = $true
 $VoiceAttack = $true
 $EDMarketConnector = $true
@@ -11,7 +10,6 @@ $EDEngineer = $true
 $EliteObservatory = $true
 $EliteTrack = $true
 $EliteDangerous = $true
-
 #### Do not edit beyond this point ####
 
 ### Sanity ###
@@ -28,26 +26,22 @@ $Path_EliteTrack = "$HOME\AppData\Local\Programs\EliteTrack\EliteTrack.exe"
 $Path_EliteDangerous = 'steam://rungameid/359320'
 
 ### Functions ###
-function Elite ($Collection) {
-    $Collection | ForEach-Object -Parallel { Exec ($_) } -ThrottleLimit 69 -ErrorAction SilentlyContinue
-}
-
-function Exec ($app_path) {
+function Start-EliteApp ($app_path) {
     if (Test-Path -Path $app_path -PathType Leaf) { Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath $app_path } 
 }
 
 ### "Local" Software ###
-if ($EDHM_UI) { Exec($Path_EDHM_UI) }
-if ($VoiceAttack) { Exec($Path_VoiceAttack) }
+if ($EDHM_UI) { Start-EliteApp($Path_EDHM_UI) }
+if ($VoiceAttack) { Start-EliteApp($Path_VoiceAttack) }
 
 ### Community Data ###
-if ($EDMarketConnector) { Exec($Path_EDMarketConnector) }
-if ($EDDiscovery) { Exec($Path_EDDiscovery) }
-if ($EDEngineer) { Exec($Path_EDEngineer) }
-if ($EliteObservatory) { Exec($Path_EliteObservatory) }
+if ($EDMarketConnector) { Start-EliteApp($Path_EDMarketConnector) }
+if ($EDDiscovery) { Start-EliteApp($Path_EDDiscovery) }
+if ($EDEngineer) { Start-EliteApp($Path_EDEngineer) }
+if ($EliteObservatory) { Start-EliteApp($Path_EliteObservatory) }
 
 ### Streaming ###
-if ($EliteTrack) { Exec($Path_EliteTrack) }
+if ($EliteTrack) { Start-EliteApp($Path_EliteTrack) }
 
 ### Elite Dangerous ###
-if ($EliteDangerous) { Exec($Path_EliteDangerous) }
+if ($EliteDangerous) { Start-EliteApp($Path_EliteDangerous) }
