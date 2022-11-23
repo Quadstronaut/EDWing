@@ -19,7 +19,7 @@ $EliteDangerous = $true
 # EDHM_UI
 if ($EDHM_UI) {
     if (!(Get-Process -Name EDHM* -ErrorAction SilentlyContinue)) { 
-        Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath 'C:\Users\Quadstronaut\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe' 
+        Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath '$env:USERPROFILE\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe' 
     } 
 }
 
@@ -49,7 +49,7 @@ if ($EDDiscovery) {
 # ED Engineer
 if ($EDEngineer) {
     if (!(Get-Process -Name EDEngineer -ErrorAction SilentlyContinue)) {
-        Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath 'C:\Users\Quadstronaut\AppData\Local\Apps\2.0\D96VD2JJ.7JH\585QYJEO.5TD\eden..tion_b9c6c2d0b4f2eae5_0001.0001_37a5eebcaa7d7023\EDEngineer.exe' 
+        Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath '$env:USERPROFILE\AppData\Local\Apps\2.0\D96VD2JJ.7JH\585QYJEO.5TD\eden..tion_b9c6c2d0b4f2eae5_0001.0001_37a5eebcaa7d7023\EDEngineer.exe' 
     }
 }
 
@@ -65,7 +65,7 @@ if ($EliteObservatory) {
 # EliteTrack
 if ($EliteTrack) {
     if (!(Get-Process -Name EliteTrack* -ErrorAction SilentlyContinue)) {
-        Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath 'C:\Users\Quadstronaut\AppData\Local\Programs\EliteTrack\EliteTrack.exe' 
+        Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath '$env:USERPROFILE\AppData\Local\Programs\EliteTrack\EliteTrack.exe' 
     }
 }
 
