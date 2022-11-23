@@ -10,7 +10,7 @@ $EDEngineer = $true
 $EliteObservatory = $true
 $EliteTrack = $true
 $EliteDangerous = $true
-#### Do not edit beyond this point ####
+#### Do not edit beyond this line ####
 
 ### Sanity ###
 if ($PSVersionTable.PSVersion.Major -lt 5) { Write-Error 'PowerShell version less than 5' -ErrorAction Stop }
