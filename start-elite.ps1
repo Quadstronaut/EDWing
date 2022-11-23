@@ -14,8 +14,10 @@ $EliteDangerous = $true
 
 #### Do not edit beyond this point ####
 
-### Paths ###
+### Sanity ###
+if ($PSVersionTable.PSVersion.Major -lt 5) { Write-Error 'PowerShell version less than 5' -ErrorAction Stop }
 
+### Paths ###
 $Path_EDHM_UI = "$HOME\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe"
 $Path_VoiceAttack = 'C:\Program Files\VoiceAttack\VoiceAttack.exe'
 $Path_EDMarketConnector = 'C:\Program Files (x86)\EDMarketConnector\EDMarketConnector.exe'
@@ -26,10 +28,13 @@ $Path_EliteTrack = "$HOME\AppData\Local\Programs\EliteTrack\EliteTrack.exe"
 $Path_EliteDangerous = 'steam://rungameid/359320'
 
 ### Functions ###
+function Elite ($Collection) {
+    $Collection | ForEach-Object -Parallel { Exec ($_) } -ThrottleLimit 69 -ErrorAction SilentlyContinue
+}
 
-function Exec ($app) { if (Installed($app)) { Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath $app } }
-
-function Installed ($app) { Test-Path -Path $app -PathType Leaf && return $true || return $false }
+function Exec ($app_path) {
+    if (Test-Path -Path $app_path -PathType Leaf) { Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath $app_path } 
+}
 
 ### "Local" Software ###
 if ($EDHM_UI) { Exec($Path_EDHM_UI) }
