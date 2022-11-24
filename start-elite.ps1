@@ -3,7 +3,7 @@ For each of the following programs, set them to true or false to determine if th
 The script will automatically ignore lines for software that does not exist on your machine.
 #>
 $EDHM_UI = $true
-$VoiceAttack = $true
+$VoiceAttack = $false
 $EDMarketConnector = $true
 $EDDiscovery = $true
 $EDEngineer = $true
@@ -27,7 +27,8 @@ $Path_EliteDangerous = 'steam://rungameid/359320'
 
 ### Functions ###
 function Start-EliteApp ($app_path) {
-    if (Test-Path -Path $app_path -PathType Leaf) { Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath $app_path } 
+    if ((Test-Path -Path $app_path -PathType Leaf) -or ($app_path.substring(0, 5) -eq 'steam'))
+    { Start-Process -WindowStyle Maximized -ErrorAction SilentlyContinue -FilePath $app_path } 
 }
 
 ### "Local" Software ###
