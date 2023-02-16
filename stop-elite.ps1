@@ -1,1 +1,4 @@
-Get-Process -Name ED*, Elite*, ObservatoryCore, VoiceAttack | Stop-Process
+Get-Process -Name ED* | Stop-Process -Force
+Get-Process -Name Elite* | Stop-Process -Force
+Get-Process -Name ObservatoryCore | Stop-Process -Force
+Get-Process -Name VoiceAttack | Stop-Process -Force
