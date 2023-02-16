@@ -2,14 +2,14 @@
 For each of the following programs, set them to true or false to determine if the script will attempt to launch them or not.
 The script will automatically ignore lines for software that does not exist on your machine.
 #>
-$EDHM_UI = $true
-$VoiceAttack = $false
-$EDMarketConnector = $true
 $EDDiscovery = $false
 $EDEngineer = $false
+$EDHM_UI = $true
+$EDMarketConnector = $true
+$EliteDangerous = $true
 $EliteObservatory = $false
 $EliteTrack = $false
-$EliteDangerous = $true
+$VoiceAttack = $false
 #### Do not edit beyond this line ####
 
 ### Sanity ###
