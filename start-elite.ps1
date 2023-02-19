@@ -50,7 +50,7 @@ function MSIinstall ($url) {
         # Define the URL of the GitHub release page
         $url = 'https://github.com/BlueMystical/EDHM_UI/releases/latest'
         # Use the Invoke-WebRequest cmdlet to download the HTML of the release page
-        $response = Invoke-WebRequest -Uri $url
+        $response = Invoke-WebRequest -Uri $url -UseBasicParsing #-UseBasicParsing may not be necessary
         # Extract the download link for the MSI file from the HTML
         $downloadLink = ($response.Links | Where-Object { $_.href -like '*.msi' }).href
     }
