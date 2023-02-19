@@ -76,7 +76,7 @@ function MSIinstall ($url) {
 
 function Start-SecondScreen ($appPath) {
     # Start the test.exe process
-    $process = Start-Process 'test.exe' -PassThru
+    $process = Start-Process $appPath -PassThru
 
     # Get the handle of the main window of the process
     $windowHandle = $process.MainWindowHandle
