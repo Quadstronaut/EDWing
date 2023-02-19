@@ -30,7 +30,6 @@ if ($PSBoundParameters.ContainsKey('help')) {
 if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Output 'Script is running as administrator. Running with elevated permissions causes issues with some of these programs and where they store your user data. Lets try launching again without Admin priviliges.'
     $arguments = "-File `"$PSCommandPath`""
-
     Start-Process powershell.exe -Verb RunAs -ArgumentList $arguments
     Exit
 }
@@ -50,24 +49,19 @@ function MSIinstall ($url) {
     if ($url.EndsWith('/latest')) {
         # Define the URL of the GitHub release page
         $url = 'https://github.com/BlueMystical/EDHM_UI/releases/latest'
-
         # Use the Invoke-WebRequest cmdlet to download the HTML of the release page
         $response = Invoke-WebRequest -Uri $url
-
         # Extract the download link for the MSI file from the HTML
         $downloadLink = ($response.Links | Where-Object { $_.href -like '*.msi' }).href
     }
     else { $downloadLink = $url }
     # Use the Path.GetFileName method to extract the filename from the URL string
     $fileName = [System.IO.Path]::GetFileName($downloadLink)
-        
     # Define the path where the MSI file will be downloaded
     $msiFile = "$($env:USERPROFILE)\Downloads\$fileName"
-
     # Download the MSI file
     Write-Output "Downloading $url..."
     Invoke-WebRequest $url -OutFile $msiFile
-
     # Install the MSI file silently
     Write-Output "Installing $msiFile..."
     Start-Process msiexec.exe -ArgumentList "/i `"$msiFile`" /qn" -Wait
@@ -77,13 +71,10 @@ function MSIinstall ($url) {
 function Start-SecondScreen ($appPath) {
     # Start the test.exe process
     $process = Start-Process $appPath -PassThru
-
     # Get the handle of the main window of the process
     $windowHandle = $process.MainWindowHandle
-
     # Get the handle of the secondary monitor
     $secondaryMonitor = (Get-WmiObject -Namespace root\wmi -Class WmiMonitorBasicDisplayParams | Where-Object { $_.IsActive -eq $true }).InstanceName
-
     # Move the window to the secondary monitor
     $winAPI = Add-Type -Name WinAPI -MemberDefinition @'
         [DllImport("user32.dll")]
