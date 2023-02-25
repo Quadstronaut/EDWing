@@ -1,50 +1,124 @@
 [CmdletBinding()]
 param (
+    # Set this to $true to run EDDiscovery
     [Parameter(Mandatory = $false)]
     [bool]$EDDiscovery = $false,
+
+    # Set this to $true to run EDEngineer
     [Parameter(Mandatory = $false)]
     [bool]$EDEngineer = $false,
+
+    # Set this to $true to run EDHM_UI
     [Parameter(Mandatory = $false)]
     [bool]$EDHM_UI = $false,
+
+    # Set this to $true to run EDMarketConnector
     [Parameter(Mandatory = $false)]
     [bool]$EDMarketConnector = $false,
+
+    # Set this to $true to run Elite Dangerous
     [Parameter(Mandatory = $false)]
     [bool]$EliteDangerous = $false,
+
+    # Set this to $true to run Elite Observatory
     [Parameter(Mandatory = $false)]
     [bool]$EliteObservatory = $false,
+
+    # Set this to $true to run Elite Track
     [Parameter(Mandatory = $false)]
     [bool]$EliteTrack = $false,
+
+    # Set this to $true to run VoiceAttack
     [Parameter(Mandatory = $false)]
     [bool]$VoiceAttack = $false,
+
+    # Set this to $true to enter configuration mode
+    [Parameter(Mandatory = $false)]
+    [bool]$ConfigMode = $false,
+
+    # Set this to $true to enter installer mode
     [Parameter(Mandatory = $false)]
     [bool]$InstallerMode = $false
 )
 
-# Check to see if -help was passed by using the $PSBoundParameters automatic variable to examine the bound parameters.
-if ($PSBoundParameters.ContainsKey('help')) {
-    Write-Host 'This script is designed to help you efficiently launch and kill all processes related to Elite Dangerous. It is highly dynamic and should work on most systems. For more information, please visit the repository at https://github.com/GitKageHub/EDQuick.'
-    # Prompt the user to press Enter to continue
-    Read-Host 'Press Enter to exit.'
+# Check for named parameters using $PSBoundParameters automatic variable to examine the bound parameters
+Switch -Regex ($PSBoundParameters.Keys) {
+    ('config' -or 'configure' -or 'configuration') {
+        $ConfigMode = $true
+    }
+    ('help' -or 'github') {
+        Start-Process 'https://github.com/GitKageHub/EDQuick'
+        Exit 0
+    }
+    ('install' -or 'installer') {
+        $InstallerMode = $true
+    }
+    default {
+        Write-Error "Unrecognized parameter: $_"
+        Read-Host 'Press Enter to exit. Error status 1.'
+        Exit 1
+    }
 }
 
-if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Output 'Script is running as administrator. Running with elevated permissions causes issues with some of these programs and where they store your user data. Lets try launching again without Admin priviliges.'
-    $arguments = "-File `"$PSCommandPath`""
-    Start-Process powershell.exe -Verb RunAs -ArgumentList $arguments
-    Exit
+<# these are not good - they're practically hardcoded
+TODO: make dynamic
+if (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
+    # Default values
+    $Path_EDHM_UI = "$HOME\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe"
+    $Path_VoiceAttack = 'C:\Program Files\VoiceAttack\VoiceAttack.exe'
+    $Path_EDMarketConnector = 'C:\Program Files (x86)\EDMarketConnector\EDMarketConnector.exe'
+    $Path_EDDiscovery = 'C:\Program Files\EDDiscovery\EDDiscovery.exe'
+    $Path_EDEngineer = Get-ChildItem -Path "$HOME\AppData" -Filter 'EDEngineer.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    $Path_EliteObservatory = 'C:\Program Files\Elite Observatory\ObservatoryCore.exe'
+    $Path_EliteTrack = "$HOME\AppData\Local\Programs\EliteTrack\EliteTrack.exe"
+    $Path_EliteDangerous = 'steam://rungameid/359320'
 }
+#>
 
-### Paths ###
-$Path_EDHM_UI = "$HOME\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe"
-$Path_VoiceAttack = 'C:\Program Files\VoiceAttack\VoiceAttack.exe'
-$Path_EDMarketConnector = 'C:\Program Files (x86)\EDMarketConnector\EDMarketConnector.exe'
-$Path_EDDiscovery = 'C:\Program Files\EDDiscovery\EDDiscovery.exe'
-$Path_EDEngineer = Get-ChildItem -Path "$HOME\AppData" -Filter 'EDEngineer.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-$Path_EliteObservatory = 'C:\Program Files\Elite Observatory\ObservatoryCore.exe'
-$Path_EliteTrack = "$HOME\AppData\Local\Programs\EliteTrack\EliteTrack.exe"
-$Path_EliteDangerous = 'steam://rungameid/359320'
+### Sanity Checks ###
+
+if (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
+    # Don't operate normally under assumed admin role
+    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Write-Output 'Normal execution running as administrator. Lets try launching again without Admin priviliges.'
+        $arguments = "-File `"$PSCommandPath`""
+        Start-Process powershell.exe -NoProfile -ExecutionPolicy Bypass -ArgumentList $arguments
+        Exit
+    }
+}
+elseif (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
+    # Don't attempt config/installation without assumed admin role
+    if (-not(([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
+        Write-Output 'Script is not running as administrator. Lets try launching again with Admin priviliges.'
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+        Start-Process powershell.exe -NoProfile -ExecutionPolicy Bypass -Verb RunAs -ArgumentList $arguments
+        Exit
+    }
+}
 
 ### Functions ###
+
+function Check-AllParametersAreFalse {
+    # Check if all parameters are false
+    param (
+        [Parameter(Mandatory = $false)]
+        [bool[]]$Params
+    )
+
+    # Check if all parameters are false
+    $result = ($Params -notcontains $true)
+
+    return $result
+}
+
+function ConfigMode () {
+
+}
+
+function InstallerMode() {
+    
+}
+
 function MSIinstall ($url) {
     if ($url.EndsWith('/latest')) {
         # Define the URL of the GitHub release page
@@ -68,8 +142,25 @@ function MSIinstall ($url) {
     Write-Output 'Done.'
 }
 
+function Read-UserConfirmation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Message = 'Confirm with Y or Yes to continue, press Escape or deny with N or No to exit.'
+    )
+    do {
+        $choice = Read-Host $Message
+        if ($choice -in 'y', 'Y', 'yes', 'Yes', 'YES') {
+            return $true
+        }
+        elseif ($choice -in 'n', 'N', 'no', 'No', 'NO', [char]27) {
+            return $false
+        }
+        $Message = "Invalid input. Confirm with 'y', 'Y', 'yes', 'Yes', 'YES' to continue, or press Escape or deny with 'n', 'N', 'no', 'No', 'NO' to exit."
+    } while ($true)
+}
+
 function Start-SecondScreen ($appPath) {
-    # Start the test.exe process
     $process = Start-Process $appPath -PassThru
     # Get the handle of the main window of the process
     $windowHandle = $process.MainWindowHandle
