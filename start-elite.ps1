@@ -114,59 +114,42 @@ function Auto-Config () {
     New-Config()
 }
 
-function Check-AllParametersAreFalse {
-    # Check if all parameters are false
-    param (
-        [Parameter(Mandatory = $false)]
-        [bool[]]$Params
-    )
-
-    # Check if all parameters are false
-    $result = ($Params -notcontains $true)
-
-    return $result
-}
-
-function InstallerMode() {
-    
-}
-
 function New-Config () {
     # Define the default configuration
     $Config = @{
-        EDDiscovery       = @{
+        EDDiscovery                 = @{
             Path        = 'C:\Program Files\EDDiscovery\EDDiscovery.exe'
             IsInstalled = $false
         }
-        EDEngineer        = @{
+        EDEngineer                  = @{
             Path        = "$HOME\AppData\Local\EDEngineer\EDEngineer.exe"
             IsInstalled = $false
         }
-        EDHM_UI           = @{
+        EDHM_UI                     = @{
             Path        = "$HOME\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe"
             IsInstalled = $false
         }
-        EDMarketConnector = @{
+        EDMarketConnector           = @{
             Path        = 'C:\Program Files (x86)\EDMarketConnector\EDMarketConnector.exe'
             IsInstalled = $false
         }
-        EliteDangerous    = @{
+        EliteDangerous              = @{
             Path        = 'steam://rungameid/359320'
             IsInstalled = $false
         }
-        EliteObservatory  = @{
+        EliteObservatory            = @{
             Path        = 'C:\Program Files\Elite Observatory\ObservatoryCore.exe'
             IsInstalled = $false
         }
-        EliteOdysseyMaterialsHelper  = @{
+        EliteOdysseyMaterialsHelper = @{
             Path        = 'C:\Program Files\Elite Observatory\ObservatoryCore.exe'
             IsInstalled = $false
         }
-        EliteTrack        = @{
+        EliteTrack                  = @{
             Path        = "$HOME\AppData\Local\Programs\EliteTrack\EliteTrack.exe"
             IsInstalled = $false
         }
-        VoiceAttack       = @{
+        VoiceAttack                 = @{
             Path        = 'C:\Program Files\VoiceAttack\VoiceAttack.exe'
             IsInstalled = $false
         }
@@ -221,9 +204,11 @@ function Test-SteamInstalled {
     $SteamExecutablePath = 'C:\Program Files (x86)\Steam\steam.exe'
     if (Test-Path $SteamRegistryKey -PathType Any -ErrorAction SilentlyContinue -ErrorVariable _) {
         return $true
-    } elseif (Test-Path $SteamExecutablePath -PathType Leaf) {
+    }
+    elseif (Test-Path $SteamExecutablePath -PathType Leaf) {
         return $true
-    } else {
+    }
+    else {
         return $false
     }
 }
@@ -231,7 +216,7 @@ function Test-SteamInstalled {
 ### Logic ###
 
 # Check if this is the first run
-if (Test-Config()) { Auto-Config() }
+if (Test-Config() -eq $false) { Auto-Config() }
 
 # Enter special modes or launch
 if (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
