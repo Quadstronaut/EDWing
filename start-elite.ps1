@@ -73,11 +73,6 @@ switch -Regex ($PSBoundParameters.Keys) {
 
 ### Functions ###
 
-function AutoConfig () {
-    Write-Host 'No configuration file detected, generating default config...'
-    DefaultConfig
-}
-
 function DefaultConfig () {
     $Config = @{
         EDDiscovery                 = @{
