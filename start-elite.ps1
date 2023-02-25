@@ -58,10 +58,10 @@ switch -Regex ($PSBoundParameters.Keys) {
         Start-Process 'https://github.com/GitKageHub/EDQuick' -ErrorAction SilentlyContinue
         Exit 0
     }
-    {$_ -in 'install','installer'} {
+    {$_ -in 'install','installer','add'} {
         $InstallerMode = $true
     }
-    {$_ -in 'uninstall','uninstaller'} {
+    {$_ -in 'uninstall','uninstaller','remove'} {
         $UnInstallerMode = $true
     }
     default {
