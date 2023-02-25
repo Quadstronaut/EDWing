@@ -50,18 +50,18 @@ param (
 )
 
 # Check for named parameters using $PSBoundParameters automatic variable to examine the bound parameters
-Switch -Regex ($PSBoundParameters.Keys) {
-    ('autoconfig' -or 'config' -or 'configure' -or 'configuration') {
+switch -Regex ($PSBoundParameters.Keys) {
+    {$_ -in 'autoconfig','config','configure','configuration'} {
         $ConfigMode = $true
     }
-    ('help' -or 'github') {
+    {$_ -in 'help','github'} {
         Start-Process 'https://github.com/GitKageHub/EDQuick' -ErrorAction SilentlyContinue
         Exit 0
     }
-    ('install' -or 'installer') {
+    {$_ -in 'install','installer'} {
         $InstallerMode = $true
     }
-    ('uninstall' -or 'uninstaller') {
+    {$_ -in 'uninstall','uninstaller'} {
         $UnInstallerMode = $true
     }
     default {
