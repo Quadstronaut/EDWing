@@ -115,7 +115,7 @@ function DefaultConfig () {
 
     # Save the default configuration to a PSD1 file
     if (-not (TestExistConfigDirectory)) {
-        New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
+        New-Item -ItemType Directory -Path "$env:LocalAppData\EDQuick\EDQuick.psd1" -Force | Out-Null
     }
     $Config | ConvertTo-Json | Out-File -Encoding utf8 -FilePath "$env:LocalAppData\EDQuick\EDQuick.psd1"
 }
@@ -124,8 +124,8 @@ function IsAdmin() {
     return (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
 }
 
-function ReadDataFile () {
-    $global:EDQConfig = Import-PowerShellDataFile -Path "$env:LocalAppData\EDQuick\EDQuick.psd1"
+function ReadDataFile ($EDQConfig) {
+    return (Import-PowerShellDataFile -Path "$env:LocalAppData\EDQuick\EDQuick.psd1" -errorAction Inquire)
 }
 
 function SearchSoftware () {
@@ -148,14 +148,20 @@ public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int 
 
 function TestExistConfig {
     $psd1Path = "$env:LocalAppData\EDQuick\EDQuick.psd1"
-    if (Test-Path -Path $psd1Path -PathType Leaf) { return $true }
-    else { return $false }
+    if (Test-Path -Path $psd1Path -PathType Leaf -ErrorAction SilentlyContinue) {
+        return $true
+    } else { 
+        return $false
+    }
 }
 
 function TestExistConfigDirectory {
     $configDirectory = "$env:LocalAppData\EDQuick"
-    if (Test-Path -Path $configDirectory -PathType Container) { return $true }
-    else { return $false }
+    if (Test-Path -Path $configDirectory -PathType Container) { 
+        return $true 
+    } else {
+        return $false 
+    }
 }
 
 function TestProgramInstalled ($appPath) {
@@ -167,16 +173,16 @@ function TestSteamInstalled {
     $SteamExecutablePath = 'C:\Program Files (x86)\Steam\steam.exe'
     if (Test-Path $SteamRegistryKey -PathType Any -ErrorAction SilentlyContinue -ErrorVariable _) {
         return $true
-    }
-    elseif (Test-Path $SteamExecutablePath -PathType Leaf) {
+    } elseif (Test-Path $SteamExecutablePath -PathType Leaf) {
         return $true
-    }
-    else {
+    } else {
         return $false
     }
 }
 
 ### Logic ###
+
+$EDQConfig = $null
 
 # Check if this is the first run
 if (TestExistConfig) { DefaultConfig } else { ReadDataFile }
@@ -185,7 +191,9 @@ if (TestExistConfig) { DefaultConfig } else { ReadDataFile }
 if ($ConfigMode -eq $true) {
     #TODO: Configure everything with PowerShellDataFile
     # This will be an interactive mode
-}
+} else { ReadDataFile($EDQConfig) }
+
+
 if ($InstallerMode -eq $true) {
     #TODO: Install flagged
     # This will be an uninteractive mode
