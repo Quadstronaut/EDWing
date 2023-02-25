@@ -47,7 +47,7 @@ param (
 
 # Check for named parameters using $PSBoundParameters automatic variable to examine the bound parameters
 Switch -Regex ($PSBoundParameters.Keys) {
-    ('config' -or 'configure' -or 'configuration') {
+    ('autoconfig' -or 'config' -or 'configure' -or 'configuration') {
         $ConfigMode = $true
     }
     ('help' -or 'github') {
@@ -90,6 +90,10 @@ elseif (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
 
 ### Functions ###
 
+function Auto-Config () {
+
+}
+
 function Check-AllParametersAreFalse {
     # Check if all parameters are false
     param (
@@ -101,10 +105,6 @@ function Check-AllParametersAreFalse {
     $result = ($Params -notcontains $true)
 
     return $result
-}
-
-function Config-Initial () {
-
 }
 
 function InstallerMode() {
@@ -147,7 +147,7 @@ public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int 
     $winAPI::SetWindowPos($windowHandle, 0, $secondaryMonitor.ScreenWidth, 0, 0, 0, 0x0001)
 }
 
-### Ignition ###
+### Logic ###
 
 if (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
     if ($ConfigMode -eq $true) {
