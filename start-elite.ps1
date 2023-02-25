@@ -51,17 +51,17 @@ param (
 
 # Check for named parameters using $PSBoundParameters automatic variable to examine the bound parameters
 switch -Regex ($PSBoundParameters.Keys) {
-    {$_ -in 'autoconfig','config','configure','configuration'} {
+    { $_ -in 'autoconfig', 'config', 'configure', 'configuration' } {
         $ConfigMode = $true
     }
-    {$_ -in 'help','github'} {
+    { $_ -in 'help', 'github' } {
         Start-Process 'https://github.com/GitKageHub/EDQuick' -ErrorAction SilentlyContinue
         Exit 0
     }
-    {$_ -in 'install','installer','add'} {
+    { $_ -in 'install', 'installer', 'add' } {
         $InstallerMode = $true
     }
-    {$_ -in 'uninstall','uninstaller','remove'} {
+    { $_ -in 'uninstall', 'uninstaller', 'remove' } {
         $UnInstallerMode = $true
     }
     default {
@@ -71,66 +71,29 @@ switch -Regex ($PSBoundParameters.Keys) {
     }
 }
 
-### Sanity Checks ###
-
-if (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
-    if (($EDDiscovery -eq $false) -and
-    ($EDEngineer -eq $false) -and
-    ($EDHM_UI -eq $false) -and
-    ($EDMarketConnector -eq $false) -and
-    ($EliteDangerous -eq $false) -and
-    ($EliteObservatory -eq $false) -and
-    ($EliteOdysseyMaterialsHelper -eq $false) -and
-    ($EliteTrack -eq $false) -and
-    ($VoiceAttack -eq $false) -and
-    ($ConfigMode -eq $false) -and
-    ($InstallerMode -eq $false) -and
-    ($UninstallerMode -eq $false)) {
-        Write-Error 'All parameters are set to $false'
-        Exit ('ID10T')
-    }
-    # Don't operate normally under assumed admin role
-    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        Write-Output 'Normal execution running as administrator. Lets try launching again without Admin priviliges.'
-        $arguments = "-File `"$PSCommandPath`""
-        Start-Process powershell.exe -NoProfile -ExecutionPolicy Bypass -ArgumentList $arguments
-        Exit 2
-    }
-}
-elseif (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
-    # Don't attempt config/installation without assumed admin role
-    if (-not(([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
-        Write-Output 'Script is not running as administrator. Lets try launching again with Admin priviliges.'
-        $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-        Start-Process powershell.exe -NoProfile -ExecutionPolicy Bypass -Verb RunAs -ArgumentList $arguments
-        Exit 3
-    }
-}
-
 ### Functions ###
 
-function Auto-Config () {
+function AutoConfig () {
     Write-Host 'No configuration file detected, auto-configuring...'
-    New-Config()
+    DefaultConfig
 }
 
-function New-Config () {
-    # Define the default configuration
+function DefaultConfig () {
     $Config = @{
         EDDiscovery                 = @{
-            Path        = 'C:\Program Files\EDDiscovery\EDDiscovery.exe'
+            Path        = "$env:ProgramFiles\EDDiscovery\EDDiscovery.exe"
             IsInstalled = $false
         }
         EDEngineer                  = @{
-            Path        = "$HOME\AppData\Local\EDEngineer\EDEngineer.exe"
+            Path        = "$env:LocalAppData\EDEngineer\EDEngineer.exe"
             IsInstalled = $false
         }
         EDHM_UI                     = @{
-            Path        = "$HOME\AppData\Local\EDHM_UI\EDHM_UI_mk2.exe"
+            Path        = "$env:LocalAppData\Local\EDHM_UI\EDHM_UI_mk2.exe"
             IsInstalled = $false
         }
         EDMarketConnector           = @{
-            Path        = 'C:\Program Files (x86)\EDMarketConnector\EDMarketConnector.exe'
+            Path        = "$env:ProgramFiles(x86)\EDMarketConnector\EDMarketConnector.exe"
             IsInstalled = $false
         }
         EliteDangerous              = @{
@@ -138,50 +101,43 @@ function New-Config () {
             IsInstalled = $false
         }
         EliteObservatory            = @{
-            Path        = 'C:\Program Files\Elite Observatory\ObservatoryCore.exe'
+            Path        = "$env:ProgramFiles\Elite Observatory\ObservatoryCore.exe"
             IsInstalled = $false
         }
         EliteOdysseyMaterialsHelper = @{
-            Path        = 'C:\Program Files\Elite Observatory\ObservatoryCore.exe'
+            Path        = "$env:LocalAppData\Elite Dangerous Odyssey Materials Helper Launcher\Elite Dangerous Odyssey Materials Helper Launcher.exe"
             IsInstalled = $false
         }
         EliteTrack                  = @{
-            Path        = "$HOME\AppData\Local\Programs\EliteTrack\EliteTrack.exe"
+            Path        = "$env:LocalAppData\Programs\EliteTrack\EliteTrack.exe"
             IsInstalled = $false
         }
         VoiceAttack                 = @{
-            Path        = 'C:\Program Files\VoiceAttack\VoiceAttack.exe'
+            Path        = "$env:ProgramFiles\VoiceAttack\VoiceAttack.exe"
             IsInstalled = $false
         }
     }
 
     # Save the default configuration to a PSD1 file
-    $Config | ConvertTo-Json | Out-File 'C:\Config\MyScript.psd1'
+    if (-not (TestExistConfigDirectory)) {
+        New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
+    }
+    $Config | ConvertTo-Json | Out-File -Encoding utf8 -FilePath "$env:LocalAppData\EDQuick\EDQuick.psd1"
 }
 
-function Read-DataFile () {
-
+function IsAdmin() {
+    return (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
 }
 
-function Read-UserConfirmation {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $false)]
-        [string]$Message = 'Confirm with Y or Yes to continue, press Escape or deny with N or No to exit.'
-    )
-    do {
-        $choice = Read-Host $Message
-        if ($choice -in 'y', 'Y', 'yes', 'Yes', 'YES') {
-            return $true
-        }
-        elseif ($choice -in 'n', 'N', 'no', 'No', 'NO', [char]27) {
-            return $false
-        }
-        $Message = "Invalid input. Confirm with 'y/Y/yes' to continue, or deny with Escape or 'n/N/no' to exit."
-    } while ($true)
+function ReadDataFile () {
+    $global:EDQConfig = Import-PowerShellDataFile -Path "$env:LocalAppData\EDQuick\EDQuick.psd1"
 }
 
-function Start-SecondScreen ($appPath) {
+function SearchSoftware () {
+    # This is a cpu intensive parallel search function to find all the software
+}
+
+function StartSecondScreen ($appPath) {
     $process = Start-Process $appPath -PassThru
     # Get the handle of the main window of the process
     $windowHandle = $process.MainWindowHandle
@@ -195,11 +151,23 @@ public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int 
     $winAPI::SetWindowPos($windowHandle, 0, $secondaryMonitor.ScreenWidth, 0, 0, 0, 0x0001)
 }
 
-function Test-Config() {
+function TestExistConfig {
+    $psd1Path = "$env:LocalAppData\EDQuick\EDQuick.psd1"
+    if (Test-Path -Path $psd1Path -PathType Leaf) { return $true }
+    else { return $false }
+}
+
+function TestExistConfigDirectory {
+    $configDirectory = "$env:LocalAppData\EDQuick"
+    if (Test-Path -Path $configDirectory -PathType Container) { return $true }
+    else { return $false }
+}
+
+function TestProgramInstalled ($appPath) {
 
 }
 
-function Test-SteamInstalled {
+function TestSteamInstalled {
     $SteamRegistryKey = 'HKLM:\Software\Valve\Steam'
     $SteamExecutablePath = 'C:\Program Files (x86)\Steam\steam.exe'
     if (Test-Path $SteamRegistryKey -PathType Any -ErrorAction SilentlyContinue -ErrorVariable _) {
@@ -216,31 +184,33 @@ function Test-SteamInstalled {
 ### Logic ###
 
 # Check if this is the first run
-if (Test-Config() -eq $false) { Auto-Config() }
+if (TestExistConfig) { DefaultConfig } else { ReadDataFile }
 
-# Enter special modes or launch
-if (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
-    if ($ConfigMode -eq $true) {
-        #TODO: Configure everything with PowerShellDataFile
-    }
-    if ($InstallerMode -eq $true) {
-        #TODO: Install flagged
-    }
+# Special Modes
+if ($ConfigMode -eq $true) {
+    #TODO: Configure everything with PowerShellDataFile
+    # This will be an interactive mode
 }
-elseif (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
+if ($InstallerMode -eq $true) {
+    #TODO: Install flagged
+    # This will be an uninteractive mode
+}
+
+# Ignition System
+if (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
     # Community Data
-    if ($EDMarketConnector) { Start-SecondScreen($Path_EDMarketConnector) }
-    if ($EDDiscovery) { Start-SecondScreen($Path_EDDiscovery) }
+    if ($EDMarketConnector) { StartSecondScreen($Global:EDQConfig.EDMarketConnector.Path) }
+    if ($EDDiscovery) { StartSecondScreen($Path_EDDiscovery) }
     
     # Local Software
-    if ($EDEngineer) { Start-SecondScreen($Path_EDEngineer) }
+    if ($EDEngineer) { StartSecondScreen($Path_EDEngineer) }
     if ($EliteDangerous) { Start-Process -FilePath $Path_EliteDangerous }
-    if ($EDHM_UI) { Start-SecondScreen($Path_EDHM_UI) }
-    if ($EliteObservatory) { Start-SecondScreen($Path_EliteObservatory) }
-    if ($EliteOdysseyMaterialsHelper) { Start-SecondScreen($Path_EliteOdysseyMaterialsHelper) }
-    if ($VoiceAttack) { Start-SecondScreen($Path_VoiceAttack) }
+    if ($EDHM_UI) { StartSecondScreen($Path_EDHM_UI) }
+    if ($EliteObservatory) { StartSecondScreen($Path_EliteObservatory) }
+    if ($EliteOdysseyMaterialsHelper) { StartSecondScreen($Path_EliteOdysseyMaterialsHelper) }
+    if ($VoiceAttack) { StartSecondScreen($Path_VoiceAttack) }
 
     # Streaming
-    if ($EliteTrack) { Start-SecondScreen($Path_EliteTrack) }
+    if ($EliteTrack) { StartSecondScreen($Path_EliteTrack) }
 }
 # See you space cowboy...
