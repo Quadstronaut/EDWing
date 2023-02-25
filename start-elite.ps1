@@ -158,7 +158,6 @@ if (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
     }
 }
 elseif (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
-
     # Community Data
     if ($EDMarketConnector) { Start-SecondScreen($Path_EDMarketConnector) }
     if ($EDDiscovery) { Start-SecondScreen($Path_EDDiscovery) }
