@@ -70,12 +70,26 @@ Switch -Regex ($PSBoundParameters.Keys) {
 ### Sanity Checks ###
 
 if (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
+    if (($EDDiscovery -eq $false) -and
+    ($EDEngineer -eq $false) -and
+    ($EDHM_UI -eq $false) -and
+    ($EDMarketConnector -eq $false) -and
+    ($EliteDangerous -eq $false) -and
+    ($EliteObservatory -eq $false) -and
+    ($EliteTrack -eq $false) -and
+    ($VoiceAttack -eq $false) -and
+    ($ConfigMode -eq $false) -and
+    ($InstallerMode -eq $false) -and
+    ($UninstallerMode -eq $false)) {
+        Write-Error 'All parameters are set to $false'
+        Exit ("ID10T")
+    }
     # Don't operate normally under assumed admin role
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         Write-Output 'Normal execution running as administrator. Lets try launching again without Admin priviliges.'
         $arguments = "-File `"$PSCommandPath`""
         Start-Process powershell.exe -NoProfile -ExecutionPolicy Bypass -ArgumentList $arguments
-        Exit
+        Exit 2
     }
 }
 elseif (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
@@ -84,7 +98,7 @@ elseif (($ConfigMode -eq $true) -or ($InstallerMode -eq $true)) {
         Write-Output 'Script is not running as administrator. Lets try launching again with Admin priviliges.'
         $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
         Start-Process powershell.exe -NoProfile -ExecutionPolicy Bypass -Verb RunAs -ArgumentList $arguments
-        Exit
+        Exit 3
     }
 }
 
