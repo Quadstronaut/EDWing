@@ -74,7 +74,7 @@ switch -Regex ($PSBoundParameters.Keys) {
 ### Functions ###
 
 function AutoConfig () {
-    Write-Host 'No configuration file detected, auto-configuring...'
+    Write-Host 'No configuration file detected, generating default config...'
     DefaultConfig
 }
 
