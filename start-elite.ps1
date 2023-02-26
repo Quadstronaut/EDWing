@@ -74,7 +74,7 @@ switch -Regex ($PSBoundParameters.Keys) {
 ### Functions ###
 
 function DefaultConfig () {
-    $Config = @{
+    return @{
         EDDiscovery                 = @{
             Path        = "$env:ProgramFiles\EDDiscovery\EDDiscovery.exe"
             IsInstalled = $false
@@ -112,24 +112,10 @@ function DefaultConfig () {
             IsInstalled = $false
         }
     }
-
-    # Save the default configuration to a PSD1 file
-    if (-not (TestExistConfigDirectory)) {
-        New-Item -ItemType Directory -Path "$env:LocalAppData\EDQuick\EDQuick.psd1" -Force | Out-Null
-    }
-    $Config | ConvertTo-Json | Out-File -Encoding utf8 -FilePath "$env:LocalAppData\EDQuick\EDQuick.psd1"
 }
 
 function IsAdmin() {
     return (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
-}
-
-function ReadDataFile ($EDQConfig) {
-    return (Import-PowerShellDataFile -Path "$env:LocalAppData\EDQuick\EDQuick.psd1" -errorAction Inquire)
-}
-
-function SearchSoftware () {
-    # This is a cpu intensive parallel search function to find all the software
 }
 
 function StartSecondScreen ($appPath) {
@@ -144,15 +130,6 @@ function StartSecondScreen ($appPath) {
 public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 '@
     $winAPI::SetWindowPos($windowHandle, 0, $secondaryMonitor.ScreenWidth, 0, 0, 0, 0x0001)
-}
-
-function TestExistConfig {
-    $psd1Path = "$env:LocalAppData\EDQuick\EDQuick.psd1"
-    if (Test-Path -Path $psd1Path -PathType Leaf -ErrorAction SilentlyContinue) {
-        return $true
-    } else { 
-        return $false
-    }
 }
 
 function TestExistConfigDirectory {
@@ -183,17 +160,23 @@ function TestSteamInstalled {
 ### Logic ###
 
 $EDQConfig = $null
+$EDQConfigPath = "$env:LocalAppData\EDQuick\EDQuick.psd1"
+$ConfigExists = Test-Path -Path $EDQConfigPath -PathType Leaf -ErrorAction SilentlyContinue
 
-# Check if this is the first run
-if (TestExistConfig) { DefaultConfig } else { ReadDataFile }
+# Check if a DataFile exists
+if (-not $ConfigExists) {
+    New-Item -Path "$env:LocalAppData\EDQuick" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+    $EDQConfig = DefaultConfig
+    $EDQConfig | Export-Clixml -Path $EDQConfigPath
+}
 
-# Special Modes
+# Reconfigure launchers
 if ($ConfigMode -eq $true) {
     #TODO: Configure everything with PowerShellDataFile
     # This will be an interactive mode
-} else { ReadDataFile($EDQConfig) }
+} else { Import-PowerShellDataFile -Path $EDQConfigPath }
 
-
+# Installer/update software
 if ($InstallerMode -eq $true) {
     #TODO: Install flagged
     # This will be an uninteractive mode
@@ -202,7 +185,7 @@ if ($InstallerMode -eq $true) {
 # Ignition System
 if (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
     # Community Data
-    if ($EDMarketConnector) { StartSecondScreen($Global:EDQConfig.EDMarketConnector.Path) }
+    if ($EDMarketConnector) { StartSecondScreen($EDQConfig.EDMarketConnector.Path) }
     if ($EDDiscovery) { StartSecondScreen($Path_EDDiscovery) }
     
     # Local Software
