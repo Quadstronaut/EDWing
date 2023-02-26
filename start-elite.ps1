@@ -179,7 +179,7 @@ if ($ConfigMode -eq $true) {
 # Installer/update software
 if ($InstallerMode -eq $true) {
     #TODO: Install flagged
-    # This will be an uninteractive mode
+    # This will be an interactive mode
 }
 
 # Ignition System
