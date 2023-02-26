@@ -78,38 +78,56 @@ function DefaultConfig () {
         EDDiscovery                 = @{
             Path        = "$env:ProgramFiles\EDDiscovery\EDDiscovery.exe"
             IsInstalled = $false
+            Source      = 'https://github.com/EDDiscovery/EDDiscovery/releases/latest'
+            Type        = 'exe' # /SILENT
         }
         EDEngineer                  = @{
             Path        = "$env:LocalAppData\EDEngineer\EDEngineer.exe"
             IsInstalled = $false
+            Source      = 'https://raw.githubusercontent.com/msarilar/EDEngineer/master/EDEngineer/releases/setup.exe'
+            Type        = 'exe' # /VERYSILENT
         }
         EDHM_UI                     = @{
             Path        = "$env:LocalAppData\Local\EDHM_UI\EDHM_UI_mk2.exe"
             IsInstalled = $false
+            Source      = 'https://github.com/BlueMystical/EDHM_UI/releases/latest'
+            Type        = 'msi' # /quiet
         }
         EDMarketConnector           = @{
             Path        = "$env:ProgramFiles(x86)\EDMarketConnector\EDMarketConnector.exe"
             IsInstalled = $false
+            Source      = 'https://github.com/EDCD/EDMarketConnector/releases/latest'
+            Type        = 'msi' # /quiet
         }
         EliteDangerous              = @{
             Path        = 'steam://rungameid/359320'
             IsInstalled = $false
+            Source      = $null
+            Type        = $null
         }
         EliteObservatory            = @{
             Path        = "$env:ProgramFiles\Elite Observatory\ObservatoryCore.exe"
             IsInstalled = $false
+            Source      = 'https://github.com/Xjph/ObservatoryCore/releases/latest'
+            Type        = 'exe' # /VERYSILENT
         }
         EliteOdysseyMaterialsHelper = @{
             Path        = "$env:LocalAppData\Elite Dangerous Odyssey Materials Helper Launcher\Elite Dangerous Odyssey Materials Helper Launcher.exe"
             IsInstalled = $false
+            Source      = 'https://github.com/jixxed/ed-odyssey-materials-helper/releases/latest'
+            Type        = 'msi' # /quiet
         }
         EliteTrack                  = @{
             Path        = "$env:LocalAppData\Programs\EliteTrack\EliteTrack.exe"
             IsInstalled = $false
+            Source      = 'https://twitch.extensions.barrycarlyon.co.uk/elitetrack/app/current/'
+            Type        = 'exe' # no silent option
         }
         VoiceAttack                 = @{
             Path        = "$env:ProgramFiles\VoiceAttack\VoiceAttack.exe"
             IsInstalled = $false
+            Source      = 'https://voiceattack.com/Downloads.aspx' # user must download manually
+            Type        = 'zip'
         }
     }
 }
