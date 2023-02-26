@@ -187,13 +187,13 @@ if (($ConfigMode -eq $false) -and ($InstallerMode -eq $false)) {
     # Community Data
     if ($EDMarketConnector) { StartSecondScreen($EDQConfig.EDMarketConnector.Path) }
     if ($EDDiscovery) { StartSecondScreen($Path_EDDiscovery) }
+    if ($EliteOdysseyMaterialsHelper) { StartSecondScreen($Path_EliteOdysseyMaterialsHelper) }
     
     # Local Software
     if ($EDEngineer) { StartSecondScreen($Path_EDEngineer) }
     if ($EliteDangerous) { Start-Process -FilePath $Path_EliteDangerous }
     if ($EDHM_UI) { StartSecondScreen($Path_EDHM_UI) }
     if ($EliteObservatory) { StartSecondScreen($Path_EliteObservatory) }
-    if ($EliteOdysseyMaterialsHelper) { StartSecondScreen($Path_EliteOdysseyMaterialsHelper) }
     if ($VoiceAttack) { StartSecondScreen($Path_VoiceAttack) }
 
     # Streaming
