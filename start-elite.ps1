@@ -132,19 +132,6 @@ public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int 
     $winAPI::SetWindowPos($windowHandle, 0, $secondaryMonitor.ScreenWidth, 0, 0, 0, 0x0001)
 }
 
-function TestExistApp ($appPath) {
-    return Test-Path -Path $appPath -PathType Leaf -Include '*.exe' -ErrorAction SilentlyContinue
-}
-
-function TestExistConfigDirectory {
-    $configDirectory = "$env:LocalAppData\EDQuick"
-    if (Test-Path -Path $configDirectory -PathType Container) { 
-        return $true 
-    } else {
-        return $false 
-    }
-}
-
 function TestExistSteam {
     $SteamRegistryKey = 'HKLM:\Software\Valve\Steam'
     $SteamExecutablePath = 'C:\Program Files (x86)\Steam\steam.exe'
@@ -159,22 +146,65 @@ function TestExistSteam {
 
 ### Logic ###
 
+# Check if running as administrator, fix shortcut and relaunch if not
+if (-not (IsAdmin)) {
+    $shell = New-Object -ComObject WScript.Shell
+    $currentFile = Split-Path -Leaf $MyInvocation.MyCommand.Path
+    foreach ($file in Get-ChildItem -Path $PWD -Filter *.lnk) {
+        if (Split-Path -Leaf $file.Name -eq $currentFile) {
+            $currentLnk = $shell.CreateShortcut($file.FullName)
+            $currentLnk.Arguments += ' -Verb runas'
+            $currentLnk.Save()
+            $shell.Run($currentLnk.FullName)
+            Stop-Process -Id $PID
+        }
+    }
+}
 $EDQConfig = $null
 $EDQConfigPath = "$env:LocalAppData\EDQuick\EDQuick.psd1"
+$EDQConfigDirectory = Split-Path $EDQConfigPath -Parent
 $ConfigExists = Test-Path -Path $EDQConfigPath -PathType Leaf -ErrorAction SilentlyContinue
 
 # Check if a DataFile exists
 if (-not $ConfigExists) {
-    New-Item -Path $EDQConfigPath -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+    New-Item -ItemType Directory -Force -Path $EDQConfigDirectory -ErrorAction SilentlyContinue | Out-Null
+    New-Item -Path $EDQConfigPath -ItemType File -Force -ErrorAction SilentlyContinue | Out-Null
     $EDQConfig = DefaultConfig
     $EDQConfig | Export-Clixml -Path $EDQConfigPath
+} else {
+    $EDQConfig = Import-PowerShellDataFile -Path $EDQConfigPath
 }
 
 # Reconfigure launchers
 if ($ConfigMode -eq $true) {
-    #TODO: Configure everything with PowerShellDataFile
-    # This will be an interactive mode
-} else { Import-PowerShellDataFile -Path $EDQConfigPath }
+    # Detect which apps are installed
+    foreach ($app in $EDQConfig.GetEnumerator()) {
+        $path = $app.Value['Path']
+        # Steam is special, sorry if you installed Elite from elsewhere (open an issue on GitHub if you want to add support for that)
+        if ($app.Key -eq 'EliteDangerous') {
+            if (TestExistSteam) {
+                $EDQConfig[$app.Key]['IsInstalled'] = $true
+            } else {
+                $EDQConfig[$app.Key]['IsInstalled'] = $false
+            }
+        } elseif (Test-Path -Path $path) {
+            $EDQConfig[$app.Key]['IsInstalled'] = $true
+        } else {
+            $EDQConfig[$app.Key]['IsInstalled'] = $false
+        }
+    }
+
+    # Ask user which apps to run
+    foreach ($app in $EDQConfig.GetEnumerator()) {
+        if ($app.Value['IsInstalled']) {
+            $isEnabled = Read-Host "Do you want to enable $($app.Key)? (Y/N)"
+            $isEnabled = $isEnabled -eq 'Y'
+            $EDQConfig[$item.Key]['IsInstalled'] = $isEnabled
+        }
+    }
+    $EDQConfig | Export-Clixml -Path $EDQConfigPath
+} 
+Import-PowerShellDataFile -Path $EDQConfigPath
 
 # Installer/update software
 if ($InstallerMode -eq $true) {
