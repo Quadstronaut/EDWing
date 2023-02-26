@@ -142,7 +142,7 @@ function TestExistConfigDirectory {
 }
 
 function TestProgramInstalled ($appPath) {
-
+    return Test-Path -Path $appPath -PathType Leaf -Include '*.exe' -ErrorAction SilentlyContinue
 }
 
 function TestSteamInstalled {
