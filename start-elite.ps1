@@ -132,6 +132,10 @@ public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int 
     $winAPI::SetWindowPos($windowHandle, 0, $secondaryMonitor.ScreenWidth, 0, 0, 0, 0x0001)
 }
 
+function TestExistApp ($appPath) {
+    return Test-Path -Path $appPath -PathType Leaf -Include '*.exe' -ErrorAction SilentlyContinue
+}
+
 function TestExistConfigDirectory {
     $configDirectory = "$env:LocalAppData\EDQuick"
     if (Test-Path -Path $configDirectory -PathType Container) { 
@@ -141,11 +145,7 @@ function TestExistConfigDirectory {
     }
 }
 
-function TestProgramInstalled ($appPath) {
-    return Test-Path -Path $appPath -PathType Leaf -Include '*.exe' -ErrorAction SilentlyContinue
-}
-
-function TestSteamInstalled {
+function TestExistSteam {
     $SteamRegistryKey = 'HKLM:\Software\Valve\Steam'
     $SteamExecutablePath = 'C:\Program Files (x86)\Steam\steam.exe'
     if (Test-Path $SteamRegistryKey -PathType Any -ErrorAction SilentlyContinue -ErrorVariable _) {
@@ -165,7 +165,7 @@ $ConfigExists = Test-Path -Path $EDQConfigPath -PathType Leaf -ErrorAction Silen
 
 # Check if a DataFile exists
 if (-not $ConfigExists) {
-    New-Item -Path "$env:LocalAppData\EDQuick" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+    New-Item -Path $EDQConfigPath -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
     $EDQConfig = DefaultConfig
     $EDQConfig | Export-Clixml -Path $EDQConfigPath
 }
