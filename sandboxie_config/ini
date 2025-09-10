@@ -1,0 +1,15 @@
+Enabled=y
+BlockNetworkFiles=n
+BorderColor=#00ff00,on,6
+Template=AutoRecoverIgnore
+Template=LingerPrograms
+Template=qWave
+Template=FileCopy
+Template=SkipHook
+Template=OpenBluetooth
+StartProgram=G:\EliteApps\EDMarketConnector\EDMarketConnector.exe
+LeaderProcess=EliteDangerous64.exe
+LingerProcess=msedge.exe
+LingerProcess=MinEdLauncher.exe
+LingerProcess=EDMC.exe
+LingerProcess=EDMarketConnector.exe
