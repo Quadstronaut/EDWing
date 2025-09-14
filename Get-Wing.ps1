@@ -67,7 +67,7 @@ else {
     # Otherwise, fall back to the current working directory ($PWD).
     $PWD.Path
 }
-$conf_file = Join-Path -Path $script_root -ChildPath 'wing.conf.ps1'
+$conf_file = Join-Path -Path $script_root -ChildPath 'wing.conf'
 
 # Use a single, simple condition to check if the file exists.
 if (Test-Path -Path $conf_file -PathType Leaf) {
@@ -94,28 +94,6 @@ else {
     Write-Information "Configuration file '$conf_file' not found."
 }
 
-
-
-# Define the Elite Dangerous accounts to move and their target coordinates/dimensions
-$client = @(
-    @{ Name = $eliteDangerousCmdrs[0]; X = -1080; Y = -387; Width = 800; Height = 600; Moved = $false },
-    @{ Name = $eliteDangerousCmdrs[1]; X = -1080; Y = 213; Width = 800; Height = 600; Moved = $false },
-    @{ Name = $eliteDangerousCmdrs[2]; X = -1080; Y = 813; Width = 800; Height = 600; Moved = $false }
-)
-
-# Define the EDMC accounts to move and their target coordinates/dimensions
-$edmc = @(
-    @{ Name = $cmdrNames[0]; X = 100; Y = 100; Width = 300; Height = 600; Moved = $false },
-    @{ Name = $cmdrNames[1]; X = -280; Y = -387; Width = 300; Height = 600; Moved = $false },
-    @{ Name = $cmdrNames[2]; X = -280; Y = 213; Width = 300; Height = 600; Moved = $false },
-    @{ Name = $cmdrNames[3]; X = -280; Y = 813; Width = 300; Height = 600; Moved = $false }
-)
-
-# Elite Dangerous Exploration Buddy
-$edeb = @(
-    @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; Maximize = $true; Moved = $false }
-)
-
 # Update the process names for the dynamic arrays
 $client | ForEach-Object { $_.ProcessName = "EliteDangerous64" }
 $edmc | ForEach-Object { $_.ProcessName = "EDMarketConnector" }
@@ -139,7 +117,6 @@ if ($all_apps_are_go) {
 
     # --- WINDOW FINDING & WAITING ---
 
-    
     $previousCount = -1
     do {
         $windowsFoundCount = 0
