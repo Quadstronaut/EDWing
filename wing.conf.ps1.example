@@ -1,0 +1,44 @@
+# This file is used to store configuration data for the
+# get-wing.ps1 script, such as CMDR names.
+# To use it, place it in the same directory as the PowerShell script.
+# Unfortunately, if it's file extension isn't .ps1 it will probably
+# query you as to how you want to open the conf file.
+
+# This is all very important you know.
+
+# Define an array of CMDR names to be used in the script.
+# Add or remove names from this list to change the number of windows launched.
+# The order here determines the order in which they are assigned to Elite Dangerous and EDMC instances.
+$cmdrNames = @(
+    "CMDRUnistronaut",
+    "CMDRBistronaut",
+    "CMDRTristronaut",
+    "CMDRQuadstronaut"
+)
+
+# Define the paths for your executables
+# These can be moved here to keep the main script cleaner
+$sandboxieStart = 'C:\PATH\TO\SANDBOXIE\Start.exe'
+$edminlauncher = 'C:\PATH\TO\STEAM\MinEdLauncher.exe'
+
+# These are the values I use on my system. Yours will be different. It's basic X and Y. I believe in you.
+
+# Define the Elite Dangerous accounts to move and their target coordinates/dimensions
+$client = @(
+    @{ Name = $eliteDangerousCmdrs[0]; X = -1080; Y = -387; Width = 800; Height = 600; Moved = $false },
+    @{ Name = $eliteDangerousCmdrs[1]; X = -1080; Y = 213; Width = 800; Height = 600; Moved = $false },
+    @{ Name = $eliteDangerousCmdrs[2]; X = -1080; Y = 813; Width = 800; Height = 600; Moved = $false }
+)
+
+# Define the EDMC accounts to move and their target coordinates/dimensions
+$edmc = @(
+    @{ Name = $cmdrNames[0]; X = 100; Y = 100; Width = 300; Height = 600; Moved = $false },
+    @{ Name = $cmdrNames[1]; X = -280; Y = -387; Width = 300; Height = 600; Moved = $false },
+    @{ Name = $cmdrNames[2]; X = -280; Y = 213; Width = 300; Height = 600; Moved = $false },
+    @{ Name = $cmdrNames[3]; X = -280; Y = 813; Width = 300; Height = 600; Moved = $false }
+)
+
+# Elite Dangerous Exploration Buddy
+$edeb = @(
+    @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; Maximize = $true; Moved = $false }
+)
