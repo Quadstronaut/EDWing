@@ -2,4 +2,4 @@
 !/wing.conf.example
 
 # Ignore the local configuration file
-/*.conf.ps1
+*.conf.ps1
