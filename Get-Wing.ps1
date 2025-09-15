@@ -57,42 +57,41 @@ function Set-WindowPosition {
     }
 } ### END Set-WindowPosition
 
-# Dot-source the wing.conf.ps1 file to load its variables
-# This variable can be a blank string if a selection of the script is run in the VS Codium terminal.
-$script_root = if ($PSScriptRoot) {
-    # If $PSScriptRoot has a value, use it.
-    $PSScriptRoot
-}
-else {
-    # Otherwise, fall back to the current working directory ($PWD).
-    $PWD.Path
-}
-$conf_file = Join-Path -Path $script_root -ChildPath 'wing.conf'
+$cmdrNames = @(
+    "CMDRDuvrazh",
+    "CMDRBistronaut",
+    "CMDRTristronaut",
+    "CMDRQuadstronaut"
+)
 
-# Use a single, simple condition to check if the file exists.
-if (Test-Path -Path $conf_file -PathType Leaf) {
+# Alt Elite Dangerous commander names (excluding the first CMDR from the list)
+$eliteDangerousCmdrs = $cmdrNames | Select-Object -Skip 1
 
-    # The try/catch block is for robust error handling.
-    # It attempts to dot-source the file.
-    try {
-        # Dot-sourcing executes the script and loads its variables and functions
-        # into the current scope.
-        Write-Information "Loading configuration from '$conf_file'..."
-        . $conf_file
-        
-        # A good practice is to provide positive feedback after a successful operation.
-        Write-Information "Configuration loaded successfully."
-    }
-    catch {
-        # If an error occurs during dot-sourcing (e.g., a syntax error in the conf file),
-        # this block will catch it and provide a clear error message.
-        Write-Error "An error occurred while loading the configuration file. Please check the file for syntax errors."
-        Write-Error $_
-    }
-}
-else {
-    Write-Information "Configuration file '$conf_file' not found."
-}
+# Define the paths for your executables
+# These can be moved here to keep the main script cleaner
+$sandboxieStart = 'C:\Users\Quadstronaut\scoop\apps\sandboxie-plus-np\current\Start.exe'
+#$edhm_uiLauncher = 'C:\Users\Quadstronaut\AppData\Local\EDHM-UI-V3\EDHM-UI-V3.exe'
+$edminLauncher = 'G:\SteamLibrary\steamapps\common\Elite Dangerous\MinEdLauncher.exe'
+
+# Define the Elite Dangerous accounts to move and their target coordinates/dimensions
+$client = @(
+    @{ Name = $eliteDangerousCmdrs[0]; X = -1080; Y = -387; Width = 800; Height = 600; Moved = $false },
+    @{ Name = $eliteDangerousCmdrs[1]; X = -1080; Y = 213; Width = 800; Height = 600; Moved = $false },
+    @{ Name = $eliteDangerousCmdrs[2]; X = -1080; Y = 813; Width = 800; Height = 600; Moved = $false }
+)
+
+# Define the EDMC accounts to move and their target coordinates/dimensions
+$edmc = @(
+    @{ Name = $cmdrNames[0]; X = 100; Y = 100; Width = 300; Height = 600; Moved = $false },
+    @{ Name = $cmdrNames[1]; X = -280; Y = -387; Width = 300; Height = 600; Moved = $false },
+    @{ Name = $cmdrNames[2]; X = -280; Y = 213; Width = 300; Height = 600; Moved = $false },
+    @{ Name = $cmdrNames[3]; X = -280; Y = 813; Width = 300; Height = 600; Moved = $false }
+)
+
+# Elite Dangerous Exploration Buddy
+$edeb = @(
+    @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; Maximize = $true; Moved = $false }
+)
 
 # Update the process names for the dynamic arrays
 $client | ForEach-Object { $_.ProcessName = "EliteDangerous64" }
@@ -188,7 +187,11 @@ if ($all_apps_are_go) {
         Start-Sleep -Milliseconds 500
         # The loop will exit when the count of windows that haven't been moved is 0
     } until ( ($allWindowsToMove | Where-Object { $_.Moved -eq $false }).Count -eq 0 )
+
+    #TODO: Input broadcasting
+    #Start-Process -FilePath 'C:\Users\Quadstronaut\OpenMultiBox\OpenMultiBoxing-v9.1.0.exe'
+    #Set-WindowPosition -ProcessName 'OpenMultiBoxing-v9.1.0' -X -280 -Y 813 -Width 285 -Height 745
 }
 else {
-    Write-Error "Could not find one or more required executables. Check your paths."
+    Write-Error 'Could not find one or more required executables. Check your paths.'
 }
