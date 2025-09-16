@@ -6,16 +6,27 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import NoSuchElementException
+
+# Import the library to load environment variables
+from dotenv import load_dotenv
+
+# Load environment variables from a .env file
+load_dotenv()
 
 # Configuration
-WEBHOOK_URL = "YOURWEBHOOKHERE"
-PRICE_FILE = "wine_price_history.json"
+WEBHOOK_URL = os.getenv("RACKHAM_WEBHOOK")
+PRICE_FILE = "/home/quadstronaut/cron_files/rackham_wine/wine_price_history.json"
 INARA_URL = "https://inara.cz/elite/station-market/230278/"
 CHROMEDRIVER_PATH = '/usr/bin/chromedriver'
 PRICE_THRESHOLD = 250000
 
 def send_discord_message(message):
     """Sends a message to the Discord webhook."""
+    if not WEBHOOK_URL:
+        print("WEBHOOK_URL not found. Cannot send message to Discord.")
+        return
+
     payload = {
         "content": message
     }
@@ -35,25 +46,29 @@ def get_current_price():
 
     service = Service(executable_path=CHROMEDRIVER_PATH)
 
+    # Use a 'with' statement for a cleaner and more reliable way to manage the driver.
+    # This automatically calls driver.quit() even if an error occurs.
     try:
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        driver.get(INARA_URL)
-        
-        # Find the row for 'Wine'
-        wine_row = driver.find_element(By.XPATH, "//a[text()='Wine']/ancestor::tr")
+        with webdriver.Chrome(service=service, options=chrome_options) as driver:
+            driver.get(INARA_URL)
+            
+            # Find the row for 'Wine'
+            wine_row = driver.find_element(By.XPATH, "//a[text()='Wine']/ancestor::tr")
 
-        # Get the sell price from the data-order attribute
-        sell_price_element = wine_row.find_element(By.XPATH, ".//td[2]")
-        wine_price_str = sell_price_element.get_attribute("data-order")
-        
-        return int(wine_price_str)
+            # Get the sell price from the data-order attribute
+            sell_price_element = wine_row.find_element(By.XPATH, ".//td[2]")
+            wine_price_str = sell_price_element.get_attribute("data-order")
+            
+            return int(wine_price_str)
 
+    # Handle a specific exception if the element is not found, which is a common error.
+    except NoSuchElementException:
+        print("The expected 'Wine' row or price element was not found on the page.")
+        return None
     except Exception as e:
+        # This catches all other, more general errors.
         print(f"An error occurred while fetching the price: {e}")
         return None
-    finally:
-        if 'driver' in locals():
-            driver.quit()
 
 def get_price_history():
     """Reads the price history from a local file, including notification state.
