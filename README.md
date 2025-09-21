@@ -1,10 +1,10 @@
-# EDQuick: Management Scripts for Elite Dangerous
+# EDWing: Management Scripts for Elite Dangerous Multiboxing
 
 > The operational framework of this project is predicated upon a self-contained methodology, thereby precluding the necessity for external cooperative entities.
 
 This repository constitutes a comprehensive collection of scripts and configuration files designated for the automated management of Elite Dangerous companion applications. The primary objective is the enhancement of multi-commander operational efficiency through systemic automation.
 
-## 🎮 Project Mandate: Automated Fleet Administration
+## 🎮 Project Mandate: Automated Fleet Launch Administration
 
 The contemporaneous administration of four distinct commander profiles necessitates a robust and efficient management infrastructure. The scripts and configurations contained herein serve as the operational mechanism for this purpose. The core objectives of this initiative are defined as follows:
 
@@ -31,17 +31,10 @@ This repository has been developed primarily for the author's personal use. Howe
 For the purpose of utilizing the scripts contained within this repository, the following protocol is to be observed:
 
 1. **Repository Cloning Procedure:**
-git clone https://github.com/GitKageHub/EDQuick.git
+git clone https://github.com/GitKageHub/EDWing.git
 
 2. **Script Examination:**
 The user is directed to navigate the directory structure to identify the scripts relevant for specific companion applications.
 
 3. **Configuration Customization:**
 The user is instructed to modify the script variables, including file paths and configuration parameters, to align with their particular system architecture and preferences.
-
-4. **SOAP Configuration**
-The user puts the soap on it's skin or else it gets the hose again.
-
-### 🆘 Additional Assistance Scripts
-
-rackham_wine.py - A Selenium script to monitor the price of Rackham's Peak market on Inara.
