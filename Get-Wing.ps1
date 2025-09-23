@@ -268,11 +268,6 @@ if ($all_apps_are_go) {
     } until (($windowConfigurations | Where-Object { $_.Moved -eq $false }).Count -eq 0)
 
     Write-Host "`nWindow positioning complete!"
-    
-    # Future enhancement placeholder
-    #TODO: Input broadcasting
-    #Start-Process -FilePath 'C:\Users\Quadstronaut\OpenMultiBox\OpenMultiBoxing-v9.1.0.exe'
-    #Set-WindowPosition -ProcessName 'OpenMultiBoxing-v9.1.0' -WindowTitle 'OpenMultiBoxing' -X -280 -Y 813 -Width 285 -Height 745
 }
 else {
     Write-Error 'Could not find one or more required executables. Check your paths:'
