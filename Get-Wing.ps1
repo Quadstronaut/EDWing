@@ -14,7 +14,8 @@ $config = @{
     WindowPollInterval = 333      # milliseconds between window detection checks
     ProcessWaitInterval = 500     # milliseconds between process checks
     WindowMoveRetryInterval = 500 # milliseconds between window positioning attempts
-    MaxRetries = 3               # maximum attempts to position each window
+    MaxRetries = 3                # maximum attempts to position each window
+    launchAdditional = $false     # launch additional non-core apps (EDEB,SRVS,etc)
 }
 
 <#
@@ -159,6 +160,7 @@ $edmcWindows = @(
 )
 
 # Elite Dangerous Exploration Buddy configuration
+$edebLauncher = "G:\EliteApps\EDEB\Elite Dangerous Exploration Buddy.exe"
 $edebWindows = @(
     @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; Maximize = $true; Moved = $false; RetryCount = 0 }
 )
@@ -173,11 +175,12 @@ $windowConfigurations = $edebWindows + $edmcWindows + $eliteWindows
 # Validate that all required executables exist
 $sbsTrue = Test-Path $sandboxieStart
 $edmlTrue = Test-Path $edminLauncher
+$edebTrue = Test-Path $edebLauncher
 
-$all_apps_are_go = $sbsTrue -and $edmlTrue
+$all_apps_are_go = $sbsTrue -and $edmlTrue -and $edebTrue
 
 if ($all_apps_are_go) {
-    Write-Host "Starting Elite Dangerous multi-commander setup..."
+    Write-Host "Starting Elite Dangerous multibox"
     
     # Launch all four Elite Dangerous instances simultaneously
     for ($i = 0; $i -lt $cmdrNames.Count; $i++) {
@@ -201,8 +204,6 @@ if ($all_apps_are_go) {
     
         # Update display only when count changes to reduce console spam
         if ($windowsFoundCount -ne $previousCount) {
-            Clear-Host
-            Write-Host "Polling for windows to load..."
             Write-Host "Found $windowsFoundCount of $($windowConfigurations.Count)"
             $previousCount = $windowsFoundCount
         }
@@ -273,4 +274,8 @@ else {
     Write-Error 'Could not find one or more required executables. Check your paths:'
     Write-Host "Sandboxie Start: $sandboxieStart (Exists: $sbsTrue)"
     Write-Host "Elite Dangerous Launcher: $edminLauncher (Exists: $edmlTrue)"
+}
+
+if ($config.launchAdditional){
+    Write-Host "Not yet, buddy."
 }
