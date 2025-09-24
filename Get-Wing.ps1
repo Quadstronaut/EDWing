@@ -1,13 +1,14 @@
 # Configuration constants
 $config = @{
-    WindowPollInterval      = 333      # milliseconds between window detection checks
-    ProcessWaitInterval     = 500     # milliseconds between process checks
+    WindowPollInterval      = 333 # milliseconds between window detection checks
+    ProcessWaitInterval     = 500 # milliseconds between process checks
     WindowMoveRetryInterval = 500 # milliseconds between window positioning attempts
-    MaxRetries              = 3                # maximum attempts to position each window
-    launchAdditional        = $false     # launch additional non-core apps (EDEB,SRVS,etc)
-    skipIntro               = $true             # Launch a py app to skip the opening cutscene
+    MaxRetries              = 3 # maximum attempts to position each window
+    launchAdditional        = $false # launch additional non-core apps (EDEB,SRVS,etc)
+    skipIntro               = $true # Launch a py app to skip the opening cutscene
     pythonPath              = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
     autoloadPY              = 'C:\Users\Quadstronaut\Documents\Git\EDWing\autoload\autoload.py'
+    pgEntry                 = $true # Launch a powershell script to click Continue and PG
 }
 
 function Set-WindowPosition {
@@ -247,13 +248,25 @@ else {
 }
 
 if ($config.skipIntro) {
-    $scriptA_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
-    & $scriptA_path
+    # Start the Python script and wait for its output
+    Write-Host "Waiting for audio signal from Elite Dangerous clients..."
+    $result = & $config.pythonPath $config.audioListener
+
+    # Check the output from the Python script
+    if ($result.Trim() -eq "TRUE") {
+        $scriptA_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
+        & $scriptA_path
+        $introSkipped = $true
+    }
+    else {
+        Write-Error "❌ An error occurred or the script finished unexpectedly."
+        $introSkipped = $false
+    }
 }
 
-if ($config.pgEntry) {
-    $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\continue-pg.ps1'
-    & $scriptB_path
+if ($config.pgEntry -and $introSkipped) {
+        $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\continue-pg.ps1'
+        & $scriptB_path
 }
 
 if ($config.launchAdditional) {
