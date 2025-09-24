@@ -1,14 +1,16 @@
 # Configuration constants
 $config = @{
+    launchEliteDangerous    = $true # Elite - Dangerous (CLIENT)
+    skipIntro               = $true # Launch_app skip intro
+    pgEntry                 = $true # Launch a powershell script to click Continue and PG
+    launchEDEB              = $false # Elite Dangerous Exploration Buddy
+    launchEDMC              = $true # Elite Dangerous Market Connector
+    pythonPath              = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
     WindowPollInterval      = 333 # milliseconds between window detection checks
     ProcessWaitInterval     = 500 # milliseconds between process checks
     WindowMoveRetryInterval = 500 # milliseconds between window positioning attempts
     MaxRetries              = 3 # maximum attempts to position each window
-    launchAdditional        = $false # launch additional non-core apps (EDEB,SRVS,etc)
-    skipIntro               = $true # Launch a py app to skip the opening cutscene
-    pythonPath              = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
-    autoloadPY              = 'C:\Users\Quadstronaut\Documents\Git\EDWing\autoload\autoload.py'
-    pgEntry                 = $true # Launch a powershell script to click Continue and PG
+    RAXXLA                  = $false
 }
 
 function Set-WindowPosition {
@@ -111,40 +113,52 @@ $eliteDangerousCmdrs = $cmdrNames | Select-Object -Skip 1
 
 # Executable paths - centralized for easier maintenance
 $sandboxieStart = 'C:\Users\Quadstronaut\scoop\apps\sandboxie-plus-np\current\Start.exe'
-#$edhm_uiLauncher = 'C:\Users\Quadstronaut\AppData\Local\EDHM-UI-V3\EDHM-UI-V3.exe'
-$edminLauncher = 'G:\SteamLibrary\steamapps\common\Elite Dangerous\MinEdLauncher.exe'
-
-# Define the Elite Dangerous accounts to move and their target coordinates/dimensions
-$eliteWindows = @(
-    @{ Name = $eliteDangerousCmdrs[0]; X = -1080; Y = -387; Width = 800; Height = 600; Moved = $false; RetryCount = 0 },
-    @{ Name = $eliteDangerousCmdrs[1]; X = -1080; Y = 213; Width = 800; Height = 600; Moved = $false; RetryCount = 0 },
-    @{ Name = $eliteDangerousCmdrs[2]; X = -1080; Y = 813; Width = 800; Height = 600; Moved = $false; RetryCount = 0 }
-)
-
-# Define the EDMC accounts to move and their target coordinates/dimensions
-$edmcWindows = @(
-    @{ Name = $cmdrNames[0]; X = 100; Y = 100; Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
-    @{ Name = $cmdrNames[1]; X = -280; Y = -387; Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
-    @{ Name = $cmdrNames[2]; X = -280; Y = 213; Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
-    @{ Name = $cmdrNames[3]; X = -280; Y = 813; Width = 300; Height = 600; Moved = $false; RetryCount = 0 }
-)
-
-<# Elite Dangerous Exploration Buddy configuration
-$edebLauncher = "G:\EliteApps\EDEB\Elite Dangerous Exploration Buddy.exe"
-$edebWindows = @(
-    @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; Maximize = $true; Moved = $false; RetryCount = 0 }
-)#>
-
-# Assign process names to window configurations
-$eliteWindows | ForEach-Object { $_.ProcessName = "EliteDangerous64" }
-$edmcWindows | ForEach-Object { $_.ProcessName = "EDMarketConnector" }
 
 # Create a single list of all windows to manage
-$windowConfigurations = $edmcWindows + $eliteWindows
+if ($config.launchEliteDangerous) {
+    # Elite: Dangerous Odyssey configuration
+    $minEDLauncher = 'G:\SteamLibrary\steamapps\common\Elite Dangerous\MinEdLauncher.exe'
+
+    # Define the Elite Dangerous accounts to move and their target coordinates/dimensions
+    $eliteWindows = @(
+        @{ Name = $eliteDangerousCmdrs[0]; X = -1080; Y = -387; Width = 800; Height = 600; Moved = $false; RetryCount = 0 },
+        @{ Name = $eliteDangerousCmdrs[1]; X = -1080; Y = 213; Width = 800; Height = 600; Moved = $false; RetryCount = 0 },
+        @{ Name = $eliteDangerousCmdrs[2]; X = -1080; Y = 813; Width = 800; Height = 600; Moved = $false; RetryCount = 0 }
+    )
+    # Assign process names to window configurations
+    $eliteWindows | ForEach-Object { $_.ProcessName = "EliteDangerous64" }
+    $windowConfigurations += $eliteWindows
+}
+if ($config.launchEDEB) {
+    # Elite Dangerous Exploration Buddy configuration
+    $edebLauncher = "G:\EliteApps\EDEB\Elite Dangerous Exploration Buddy.exe"
+    & $edebLauncher
+
+    # Window configuration
+    $edebWindows = @(
+        @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; Maximize = $true; Moved = $false; RetryCount = 0 }
+    )
+
+    $windowConfigurations += $edebWindows
+}
+if ($config.launchEDMC) {
+    # Define the EDMC accounts to move and their target coordinates/dimensions
+    $edmcWindows = @(
+        @{ Name = $cmdrNames[0]; X = 100; Y = 100; Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
+        @{ Name = $cmdrNames[1]; X = -280; Y = -387; Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
+        @{ Name = $cmdrNames[2]; X = -280; Y = 213; Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
+        @{ Name = $cmdrNames[3]; X = -280; Y = 813; Width = 300; Height = 600; Moved = $false; RetryCount = 0 }
+    )
+    # Assign process names to window configurations
+    $edmcWindows | ForEach-Object { $_.ProcessName = "EDMarketConnector" }
+    $windowConfigurations += $edmcWindows 
+}
+if ($config.RAXXLA) { $red_herring = $false } { $red_herring = $true }
+if ($red_herring) { "Disappointment" }
 
 # Validate that all required executables exist
 $sbsTrue = Test-Path $sandboxieStart
-$edmlTrue = Test-Path $edminLauncher
+$edmlTrue = Test-Path $minEDLauncher
 
 $all_apps_are_go = $sbsTrue -and $edmlTrue
 
@@ -153,7 +167,7 @@ if ($all_apps_are_go) {
 
     # Launch all four Elite Dangerous instances simultaneously
     for ($i = 0; $i -lt $cmdrNames.Count; $i++) {
-        $arguments = "/box:$($cmdrNames[$i]) `"$edminLauncher`" /frontier Account$($i+1) /edo /autorun /autoquit /skipInstallPrompt"
+        $arguments = "/box:$($cmdrNames[$i]) `"$minEDLauncher`" /frontier Account$($i+1) /edo /autorun /autoquit /skipInstallPrompt"
         Start-Process -FilePath $sandboxieStart -ArgumentList $arguments
         Write-Host "Launched $($cmdrNames[$i]) in sandbox"
     }
@@ -244,7 +258,7 @@ if ($all_apps_are_go) {
 else {
     Write-Error 'Could not find one or more required executables. Check your paths:'
     Write-Host "Sandboxie Start: $sandboxieStart (Exists: $sbsTrue)"
-    Write-Host "Elite Dangerous Launcher: $edminLauncher (Exists: $edmlTrue)"
+    Write-Host "Elite Dangerous Launcher: $minEDLauncher (Exists: $edmlTrue)"
 }
 
 if ($config.skipIntro) {
@@ -265,10 +279,6 @@ if ($config.skipIntro) {
 }
 
 if ($config.pgEntry -and $introSkipped) {
-        $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\continue-pg.ps1'
-        & $scriptB_path
-}
-
-if ($config.launchAdditional) {
-    Write-Host "Not yet, buddy."
+    $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\continue-pg.ps1'
+    & $scriptB_path
 }
