@@ -11,11 +11,13 @@
 
 # Configuration constants
 $config = @{
-    WindowPollInterval = 333      # milliseconds between window detection checks
-    ProcessWaitInterval = 500     # milliseconds between process checks
+    WindowPollInterval      = 333      # milliseconds between window detection checks
+    ProcessWaitInterval     = 500     # milliseconds between process checks
     WindowMoveRetryInterval = 500 # milliseconds between window positioning attempts
-    MaxRetries = 3                # maximum attempts to position each window
-    launchAdditional = $false     # launch additional non-core apps (EDEB,SRVS,etc)
+    MaxRetries              = 3                # maximum attempts to position each window
+    launchAdditional        = $false     # launch additional non-core apps (EDEB,SRVS,etc)
+    skipIntro               = $true             # Launch a py app to skip the opening cutscene
+    pythonPath              = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
 }
 
 <#
@@ -103,7 +105,8 @@ function Set-WindowPosition {
             $result = [User32]::ShowWindowAsync($handle, $SW_MAXIMIZE)
             if ($result) {
                 Write-Host "Maximized window for '$WindowTitle' (Process: '$ProcessName')"
-            } else {
+            }
+            else {
                 Write-Warning "Failed to maximize window for '$WindowTitle' (Process: '$ProcessName')"
                 return $false
             }
@@ -113,7 +116,8 @@ function Set-WindowPosition {
             $result = [User32]::SetWindowPos($handle, [IntPtr]::Zero, $X, $Y, $Width, $Height, $SWP_NOZORDER)
             if ($result) {
                 Write-Host "Moved and resized window for '$WindowTitle' (Process: '$ProcessName') to X=$X, Y=$Y, W=$Width, H=$Height"
-            } else {
+            }
+            else {
                 Write-Warning "Failed to position window for '$WindowTitle' (Process: '$ProcessName')"
                 return $false
             }
@@ -170,14 +174,14 @@ $eliteWindows | ForEach-Object { $_.ProcessName = "EliteDangerous64" }
 $edmcWindows | ForEach-Object { $_.ProcessName = "EDMarketConnector" }
 
 # Create a single list of all windows to manage
-$windowConfigurations = $edebWindows + $edmcWindows + $eliteWindows
+$windowConfigurations = $edmcWindows + $eliteWindows
 
 # Validate that all required executables exist
 $sbsTrue = Test-Path $sandboxieStart
 $edmlTrue = Test-Path $edminLauncher
 $edebTrue = Test-Path $edebLauncher
 
-$all_apps_are_go = $sbsTrue -and $edmlTrue -and $edebTrue
+$all_apps_are_go = $sbsTrue -and $edmlTrue
 
 if ($all_apps_are_go) {
     Write-Host "Starting Elite Dangerous multibox"
@@ -251,11 +255,13 @@ if ($all_apps_are_go) {
                     
                     if ($positioned) {
                         $window.Moved = $true
-                    } else {
+                    }
+                    else {
                         $window.RetryCount++
                         Write-Host "Retry attempt $($window.RetryCount)/$($config.MaxRetries) for $($window.Name)"
                     }
-                } else {
+                }
+                else {
                     # Max retries reached - mark as moved to prevent infinite loop
                     Write-Warning "Failed to position window $($window.Name) after $($config.MaxRetries) attempts. Skipping."
                     $window.Moved = $true
@@ -276,6 +282,11 @@ else {
     Write-Host "Elite Dangerous Launcher: $edminLauncher (Exists: $edmlTrue)"
 }
 
-if ($config.launchAdditional){
+if ($config.skipIntro) {
+    Write-Host "Starting autoload.py"
+    Start-Process -FilePath $config.pythonPath -ArgumentList 'C:\Users\Quadstronaut\Documents\Git\EDPY\AutoLoad\autoload.py'
+}
+
+if ($config.launchAdditional) {
     Write-Host "Not yet, buddy."
 }
