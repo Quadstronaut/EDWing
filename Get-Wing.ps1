@@ -2,7 +2,7 @@
 $config = @{
     launchEliteDangerous    = $true # Elite - Dangerous (CLIENT)
     skipIntro               = $true # Launch_app skip intro
-    pgEntry                 = $true # Launch a powershell script to click Continue and PG
+    pgEntry                 = $true # Launch a script to select Continue and PG
     launchEDEB              = $false # Elite Dangerous Exploration Buddy
     launchEDMC              = $true # Elite Dangerous Market Connector
     pythonPath              = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
@@ -263,22 +263,23 @@ else {
 
 if ($config.skipIntro) {
     # Start the Python script and wait for its output
-    Write-Host "Waiting for audio signal from Elite Dangerous clients..."
-    $result = & $config.pythonPath $config.audioListener
+    #Write-Host "Waiting for audio signal from Elite Dangerous clients..."
+    #$result = & $config.pythonPath $config.audioListener
+    #TODO: correct the audio listener wait condition
 
     # Check the output from the Python script
-    if ($result.Trim() -eq "TRUE") {
-        $scriptA_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
-        & $scriptA_path
-        $introSkipped = $true
-    }
-    else {
-        Write-Error "❌ An error occurred or the script finished unexpectedly."
-        $introSkipped = $false
-    }
+    #if ($result.Trim() -eq "TRUE") {
+    $scriptA_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
+    & $scriptA_path
+    $introSkipped = $true
+    #}
+}
+else {
+    $introSkipped = $false
 }
 
 if ($config.pgEntry -and $introSkipped) {
-    $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\continue-pg.ps1'
+    Start-Sleep -seconds 20 # 20 seconds was based on repeated runs during testing - it's tuned to the dev rig
+    $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'C:\Users\Quadstronaut\Documents\Git\EDWing\clicker_scripts\continue-pg.ps1'
     & $scriptB_path
 }
