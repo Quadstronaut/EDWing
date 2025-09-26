@@ -46,7 +46,7 @@ function Single-ClickAtPosition {
         # 2. Perform the click.
         Write-Host "  -> Performing single click."
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        Start-Sleep -Milliseconds 50
+        Start-Sleep -Milliseconds 100
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
         Write-Host "  -> Single click completed successfully." -ForegroundColor Green
@@ -76,16 +76,16 @@ function Double-ClickAtPosition {
         # 2. Perform the first click.
         Write-Host "  -> Performing first click."
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        Start-Sleep -Milliseconds 50
+        Start-Sleep -Milliseconds 66
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
         # 3. Pause for the double-click interval.
-        Start-Sleep -Milliseconds 100
+        Start-Sleep -Milliseconds 33
 
         # 4. Perform the second click.
         Write-Host "  -> Performing second click."
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        Start-Sleep -Milliseconds 50
+        Start-Sleep -Milliseconds 66
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
         Write-Host "  -> Double-click completed successfully." -ForegroundColor Green
@@ -101,13 +101,13 @@ function Double-ClickAtPosition {
 # Each object includes the coordinates and the type of click to perform.
 $actions = @(
     [PSCustomObject]@{ X = -960; Y = -141; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = -500; ClickType = "Single" },
+    [PSCustomObject]@{ X = -800; Y = -42; ClickType = "Double" },
     [PSCustomObject]@{ X = -960; Y = 461; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = 555; ClickType = "Single" },
+    [PSCustomObject]@{ X = -800; Y = 555; ClickType = "Double" },
     [PSCustomObject]@{ X = -960; Y = 1061; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Single" },
+    [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Double" },
     [PSCustomObject]@{ X = 277; Y = 377; ClickType = "Double" },
-    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Single" }
+    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Single" } # Work, damn you!
 )
 
 Write-Host "Starting automated mouse script." -ForegroundColor Cyan
