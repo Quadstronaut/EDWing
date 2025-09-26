@@ -1,6 +1,7 @@
 """
 Elite Dangerous Command Relay - Multi-Window Input Broadcasting
 Captures keyboard input and relays commands to all Elite Dangerous windows after typing stops.
+Enhanced with robust window targeting and keyboard event handling from autohonk.py.
 
 Requirements:
 - pip install pywin32
@@ -29,7 +30,8 @@ CONFIG = {
     "commanders": ["Bistronaut", "Tristronaut", "Quadstronaut"],
     "primary_commander": "Duvrazh",
     "typing_timeout": 1.0,  # Wait 1 second after last keypress before sending
-    "key_send_delay": 0.05,  # Delay between each key send
+    "key_send_delay": 0.05,  # Delay between each key send (50ms as requested)
+    "window_focus_delay": 0.2,  # Time to wait after focusing window
 }
 
 # Logging setup
@@ -63,6 +65,7 @@ class CommandRelay:
         print(f"Named commanders: {', '.join(CONFIG['commanders'])}")
         print(f"Primary commander (no name in title): {CONFIG['primary_commander']}")
         print(f"Typing timeout: {CONFIG['typing_timeout']} seconds")
+        print(f"Key send delay: {CONFIG['key_send_delay']} seconds")
         print("")
         print("INSTRUCTIONS:")
         print("1. Focus this console window")
@@ -90,14 +93,15 @@ class CommandRelay:
             return None
 
     def find_all_elite_windows(self) -> List[Tuple[int, str, str]]:
-        """Find all Elite Dangerous windows."""
+        """Find all Elite Dangerous windows using the robust method from autohonk.py."""
         
         def enum_windows_callback(hwnd, windows):
             try:
                 if win32gui.IsWindowVisible(hwnd):
+                    # Get window title
                     title = win32gui.GetWindowText(hwnd)
                     
-                    # Get the process info for this window
+                    # Get process ID and name
                     _, pid = win32process.GetWindowThreadProcessId(hwnd)
                     try:
                         process_handle = win32api.OpenProcess(
@@ -108,19 +112,20 @@ class CommandRelay:
                         process_name = win32process.GetModuleFileNameEx(process_handle, 0).lower()
                         win32api.CloseHandle(process_handle)
                         
-                        # Check if this is the Elite Dangerous process
-                        if CONFIG["process_name"].lower() in process_name:
-                            # Check if title contains our base window title
-                            if title.strip() and CONFIG["window_title_contains"].lower() in title.lower():
-                                
-                                # First, check for named commanders
-                                for commander in CONFIG["commanders"]:
-                                    if commander.lower() in title.lower():
-                                        windows.append((hwnd, title, commander))
-                                        logger.debug(f"Found Elite window for {commander}: '{title}'")
-                                        return True
-                                
-                                # If no named commanders found, check if this could be the primary commander
+                        # Check if it's Elite Dangerous process with matching window title
+                        if CONFIG["process_name"].lower() in process_name and CONFIG["window_title_contains"].lower() in title.lower():
+                            
+                            # First, check for named commanders
+                            commander_found = False
+                            for commander in CONFIG["commanders"]:
+                                if commander.lower() in title.lower():
+                                    windows.append((hwnd, title, commander))
+                                    logger.debug(f"Found Elite window for {commander}: '{title}'")
+                                    commander_found = True
+                                    break
+                            
+                            # If no named commanders found, check if this could be the primary commander
+                            if not commander_found:
                                 primary_commander = CONFIG["primary_commander"]
                                 # Check if title contains any OTHER commander names - if not, it's likely the primary
                                 has_other_commander = any(cmd.lower() in title.lower() for cmd in CONFIG["commanders"])
@@ -134,7 +139,6 @@ class CommandRelay:
                         
             except Exception as e:
                 logger.debug(f"Error processing window {hwnd}: {e}")
-                pass
             return True
 
         try:
@@ -146,48 +150,51 @@ class CommandRelay:
             return []
 
     def get_virtual_key_code(self, char: str) -> Optional[int]:
-        """Get Windows virtual key code for a character."""
-        if char == ' ':
-            return win32con.VK_SPACE
-        elif char == '\n' or char == '\r':
-            return win32con.VK_RETURN
-        elif char == '\t':
-            return win32con.VK_TAB
+        """Get Windows virtual key code for a character using autohonk.py method."""
+        special_keys = {
+            ' ': win32con.VK_SPACE,
+            '\n': win32con.VK_RETURN,
+            '\r': win32con.VK_RETURN,
+            '\t': win32con.VK_TAB,
+        }
+        
+        if char in special_keys:
+            return special_keys[char]
         elif len(char) == 1 and char.isalnum():
             return ord(char.upper())
         else:
-            # For other characters, try to get the virtual key
+            # For other single characters, try to get the virtual key
             try:
-                return ord(char.upper())
+                if len(char) == 1:
+                    return ord(char.upper())
             except:
-                return None
+                pass
+            return None
 
     def send_key_to_window(self, hwnd: int, char: str, commander: str) -> bool:
-        """Send a single key to a specific window."""
+        """Send a single key to a specific window using autohonk.py's robust method."""
         try:
-            # Handle special characters
-            if char == ' ':
-                # Send space key
-                win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_SPACE, 0)
-                time.sleep(0.01)
-                win32gui.SendMessage(hwnd, win32con.WM_KEYUP, win32con.VK_SPACE, 0)
-                logger.debug(f"Sent SPACE to {commander}")
-                return True
-            elif char == '\n' or char == '\r':
-                # Send enter key
-                win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_RETURN, 0)
-                time.sleep(0.01)
-                win32gui.SendMessage(hwnd, win32con.WM_KEYUP, win32con.VK_RETURN, 0)
-                logger.debug(f"Sent ENTER to {commander}")
-                return True
-            elif len(char) == 1:
-                # Send character using WM_CHAR (most reliable for text input)
-                win32gui.SendMessage(hwnd, win32con.WM_CHAR, ord(char), 0)
-                logger.debug(f"Sent '{char}' to {commander}")
-                return True
-            else:
+            vk_code = self.get_virtual_key_code(char)
+            if vk_code is None:
                 logger.warning(f"Unsupported character: '{char}'")
                 return False
+            
+            # Use keybd_event for more reliable key sending (same as autohonk.py)
+            # First bring the window to foreground
+            try:
+                win32gui.SetForegroundWindow(hwnd)
+                time.sleep(0.02)  # Brief delay for focus to take effect
+            except Exception as focus_error:
+                logger.debug(f"Could not focus {commander}: {focus_error}")
+                # Continue anyway - keybd_event should still work
+            
+            # Send key down and key up events
+            win32api.keybd_event(vk_code, 0, 0, 0)  # Key down
+            time.sleep(0.01)  # Brief pause between down and up
+            win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)  # Key up
+            
+            logger.debug(f"Sent '{char}' (VK:{vk_code}) to {commander}")
+            return True
                 
         except Exception as e:
             logger.error(f"Error sending key '{char}' to {commander}: {e}")
@@ -205,6 +212,8 @@ class CommandRelay:
         
         if not windows:
             print("⚠️  No Elite Dangerous windows found!")
+            print(f"     Looking for process: '{CONFIG['process_name']}.exe'")
+            print(f"     Window title containing: '{CONFIG['window_title_contains']}'")
             return
         
         print(f"📡 Found {len(windows)} Elite Dangerous window(s)")
@@ -217,21 +226,23 @@ class CommandRelay:
             try:
                 print(f"📤 Sending to {commander}...", end=" ")
                 
-                # Try to focus window, but don't fail if it doesn't work
+                # Focus the window with proper delay (using autohonk.py timing)
                 try:
                     win32gui.SetForegroundWindow(hwnd)
-                    win32gui.SetActiveWindow(hwnd)
-                    time.sleep(0.05)  # Brief pause
+                    time.sleep(CONFIG["window_focus_delay"])  # Wait for focus to take effect
                 except Exception as focus_error:
                     logger.debug(f"Could not focus {commander}: {focus_error}")
-                    # Continue anyway - SendMessage should still work
+                    # Continue anyway - keybd_event should still work
                 
                 # Send each character in the command
                 char_success = 0
-                for char in command:
+                for i, char in enumerate(command):
                     if self.send_key_to_window(hwnd, char, commander):
                         char_success += 1
-                    time.sleep(CONFIG["key_send_delay"])
+                    
+                    # Delay between keys (50ms as requested)
+                    if i < len(command) - 1:  # Don't delay after the last key
+                        time.sleep(CONFIG["key_send_delay"])
                 
                 print(f"✅ ({char_success}/{len(command)} chars)")
                 success_count += 1
@@ -249,7 +260,7 @@ class CommandRelay:
         if self.console_hwnd:
             try:
                 win32gui.SetForegroundWindow(self.console_hwnd)
-                win32gui.SetActiveWindow(self.console_hwnd)
+                time.sleep(0.1)  # Brief delay for focus
                 print("🔄 Console window refocused")
             except Exception as e:
                 logger.debug(f"Could not refocus console window: {e}")
@@ -319,6 +330,18 @@ class CommandRelay:
     def run(self):
         """Main execution logic."""
         try:
+            # Test window finding on startup
+            print("🔍 Scanning for Elite Dangerous windows...")
+            windows = self.find_all_elite_windows()
+            if windows:
+                print(f"✅ Found {len(windows)} Elite window(s) at startup:")
+                for _, title, commander in windows:
+                    print(f"   • {commander}: {title}")
+            else:
+                print("⚠️  No Elite windows found at startup")
+                print("   Make sure Elite Dangerous is running with the expected window titles")
+            print()
+            
             # Start input monitoring thread
             self.input_thread = threading.Thread(target=self.input_monitor, daemon=True)
             self.input_thread.start()
