@@ -97,8 +97,8 @@ foreach ($coord in $coordinates) {
 
     # Pause between each double-click to prevent issues with focus or application responsiveness.
     # A delay of 1-2 seconds is recommended.
-    Write-Host "Pausing for 2 seconds before moving to the next coordinate..." -ForegroundColor DarkGray
-    Start-Sleep -Seconds 2
+    Write-Host "Pausing for $delay milliseconds before moving to the next coordinate..." -ForegroundColor DarkGray
+    Start-Sleep -Milliseconds 42
 }
 
 Write-Host "--------------------------------------------------------"
