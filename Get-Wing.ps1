@@ -154,7 +154,7 @@ if ($config.launchEDMC) {
     $windowConfigurations += $edmcWindows 
 }
 if ($config.RAXXLA) { $red_herring = $false } { $red_herring = $true }
-if ($red_herring) { "Disappointment" }
+if ($red_herring) { "Disappointment" } { "Mystery" }
 
 # Validate that all required executables exist
 $sbsTrue = Test-Path $sandboxieStart
@@ -262,17 +262,9 @@ else {
 }
 
 if ($config.skipIntro) {
-    # Start the Python script and wait for its output
-    #Write-Host "Waiting for audio signal from Elite Dangerous clients..."
-    #$result = & $config.pythonPath $config.audioListener
-    #TODO: correct the audio listener wait condition
-
-    # Check the output from the Python script
-    #if ($result.Trim() -eq "TRUE") {
     $scriptA_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
     & $scriptA_path
     $introSkipped = $true
-    #}
 }
 else {
     $introSkipped = $false
@@ -283,3 +275,5 @@ if ($config.pgEntry -and $introSkipped) {
     $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'C:\Users\Quadstronaut\Documents\Git\EDWing\clicker_scripts\continue-pg.ps1'
     & $scriptB_path
 }
+
+Start-Process -WorkingDirectory $PSScriptRoot -FilePath $config.pythonPath -ArgumentList 'input_broadcast.py'
