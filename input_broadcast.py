@@ -217,10 +217,14 @@ class CommandRelay:
             try:
                 print(f"📤 Sending to {commander}...", end=" ")
                 
-                # Focus the window first
-                win32gui.SetForegroundWindow(hwnd)
-                win32gui.SetActiveWindow(hwnd)
-                time.sleep(0.1)  # Brief pause to ensure focus
+                # Try to focus window, but don't fail if it doesn't work
+                try:
+                    win32gui.SetForegroundWindow(hwnd)
+                    win32gui.SetActiveWindow(hwnd)
+                    time.sleep(0.05)  # Brief pause
+                except Exception as focus_error:
+                    logger.debug(f"Could not focus {commander}: {focus_error}")
+                    # Continue anyway - SendMessage should still work
                 
                 # Send each character in the command
                 char_success = 0
@@ -233,7 +237,7 @@ class CommandRelay:
                 success_count += 1
                 
                 # Brief pause between windows
-                time.sleep(0.1)
+                time.sleep(0.05)
                 
             except Exception as e:
                 print(f"❌ Error: {e}")
