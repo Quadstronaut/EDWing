@@ -28,7 +28,7 @@ public static extern void mouse_event(
 # Add the C# type definition to PowerShell.
 Add-Type -MemberDefinition $Signature -Namespace Win32 -Name MouseAPI
 
-function Single-ClickAtPosition {
+function Set-SingleClickAtPosition {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -46,7 +46,7 @@ function Single-ClickAtPosition {
         # 2. Perform the click.
         Write-Host "  -> Performing single click."
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        Start-Sleep -Milliseconds 100
+        Start-Sleep -Milliseconds 150
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
         Write-Host "  -> Single click completed successfully." -ForegroundColor Green
@@ -58,7 +58,7 @@ function Single-ClickAtPosition {
     }
 }
 
-function Double-ClickAtPosition {
+function Set-DoubleClickAtPosition {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -76,16 +76,16 @@ function Double-ClickAtPosition {
         # 2. Perform the first click.
         Write-Host "  -> Performing first click."
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        Start-Sleep -Milliseconds 66
+        Start-Sleep -Milliseconds 150
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
         # 3. Pause for the double-click interval.
-        Start-Sleep -Milliseconds 33
+        Start-Sleep -Milliseconds 150
 
         # 4. Perform the second click.
         Write-Host "  -> Performing second click."
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        Start-Sleep -Milliseconds 66
+        Start-Sleep -Milliseconds 150
         [Win32.MouseAPI]::mouse_event($MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
         Write-Host "  -> Double-click completed successfully." -ForegroundColor Green
@@ -107,7 +107,7 @@ $actions = @(
     [PSCustomObject]@{ X = -960; Y = 1061; ClickType = "Double" },
     [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Double" },
     [PSCustomObject]@{ X = 277; Y = 377; ClickType = "Double" },
-    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Single" } # Work, damn you!
+    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Double" } # Work, damn you!
 )
 
 Write-Host "Starting automated mouse script." -ForegroundColor Cyan
@@ -118,10 +118,10 @@ Write-Host "--------------------------------------------------------"
 # Loop through each action in the list and perform the specified click.
 foreach ($action in $actions) {
     if ($action.ClickType -eq "Double") {
-        Double-ClickAtPosition -X $action.X -Y $action.Y
+        Set-DoubleClickAtPosition -X $action.X -Y $action.Y
     }
     elseif ($action.ClickType -eq "Single") {
-        Single-ClickAtPosition -X $action.X -Y $action.Y
+        Set-SingleClickAtPosition -X $action.X -Y $action.Y
     }
     else {
         Write-Host "Warning: Unknown click type $($action.ClickType) for coordinates $($action.X), $($action.Y). Skipping." -ForegroundColor Yellow
