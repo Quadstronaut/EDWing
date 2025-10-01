@@ -259,8 +259,8 @@ else {
 }
 
 if ($config.skipIntro) {
-    $scriptA_path = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
-    & $scriptA_path
+    $skipIntro_scriptPath = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
+    & $skipIntro_scriptPath
     $introSkipped = $true
 }
 else {
@@ -269,8 +269,13 @@ else {
 
 if ($config.pgEntry -and $introSkipped) {
     Start-Sleep -seconds 20 # 20 seconds was based on repeated runs during testing - it's tuned to the dev rig
-    $scriptB_path = Join-Path -Path $PSScriptRoot -ChildPath 'C:\Users\Quadstronaut\Documents\Git\EDWing\clicker_scripts\continue-pg.ps1'
-    & $scriptB_path
+    $pgEntry_scriptPath = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\continue-pg.ps1'
+    & $pgEntry_scriptPath
 }
 
+# Python - nonfunctional at time of commit
 # Start-Process -WorkingDirectory $PSScriptRoot -FilePath $config.pythonPath -ArgumentList 'input_broadcast.py'
+
+# PowerShell - run in new process independently
+$inputBroadcast_scriptPath = Join-Path -path $PSScriptRoot -ChildPath 'input_broadcast.ps1'
+Start-Process powershell.exe -ArgumentList "-File $inputBroadcast_scriptPath"
