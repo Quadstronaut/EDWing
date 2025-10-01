@@ -8,7 +8,7 @@ $actions = @(
     [PSCustomObject]@{ X = -960; Y = 1061; ClickType = "Double" },
     [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Double" },
     [PSCustomObject]@{ X = 277; Y = 377; ClickType = "Double" },
-    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Double" } # Work, damn you!
+    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Double" }
 )
 
 #- Functions -#
@@ -81,7 +81,7 @@ function Set-DoubleClickAtPosition {
 }
 
 #- Prep -#
-# Load the required .NET assembly for Windows Forms, which contains the Cursor class.
+# Load the required .NET assembly which contains the Cursor class.
 try {
     Add-Type -AssemblyName System.Windows.Forms
 }
@@ -95,8 +95,9 @@ catch {
 $MOUSEEVENTF_LEFTDOWN = 0x0002
 $MOUSEEVENTF_LEFTUP = 0x0004
 
-# Use PInvoke to import the `mouse_event` function from user32.dll.
+# Import the `mouse_event` function from user32.dll.
 # This function is used to send mouse events directly to the operating system.
+# There is a high likelihood this can trigger Windows Defender based on tests.
 $Signature = @'
 [DllImport("user32.dll")]
 public static extern void mouse_event(
@@ -110,18 +111,17 @@ public static extern void mouse_event(
 
 # Add the C# type definition to PowerShell.
 Add-Type -MemberDefinition $Signature -Namespace Win32 -Name MouseAPI
-Write-Host "Starting automated mouse script." -ForegroundColor Cyan
-Write-Host "The script will process each coordinate with a delay between them." -ForegroundColor Cyan
-Write-Host "Press Ctrl+C at any time to stop the script." -ForegroundColor Gray
-Write-Host "--------------------------------------------------------"
 
-#- Action -#
-# Loop through each action in the list and perform the specified click.
+# --------------------------------------------------------------------------
+# --- MAIN SCRIPT EXECUTION ---
+# --------------------------------------------------------------------------
 foreach ($action in $actions) {
     if ($action.ClickType -eq "Double") {
+        # Call the function to perform the double-click at the current coordinates.
         Set-DoubleClickAtPosition -X $action.X -Y $action.Y
     }
     elseif ($action.ClickType -eq "Single") {
+        # Call the function to perform the double-click at the current coordinates.
         Set-SingleClickAtPosition -X $action.X -Y $action.Y
     }
     else {
