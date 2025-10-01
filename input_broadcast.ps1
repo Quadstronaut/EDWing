@@ -189,18 +189,18 @@ function Send-CommandToWindows {
         return
     }
     
-    Write-Host "📡 Found $($windows.Count) window(s)" -ForegroundColor Green
+    Write-Host "Found $($windows.Count) window(s)" -ForegroundColor Green
     foreach ($win in $windows) {
-        Write-Host "   • $($win.Commander)" -ForegroundColor Gray
+        Write-Host "$($win.Commander)" -ForegroundColor Gray
     }
     
     $method = if ($UseDirect) { "PostMessage" } else { "keybd_event" }
-    Write-Host "📤 Method: $method" -ForegroundColor Cyan
+    Write-Host "Method: $method" -ForegroundColor Cyan
     
     # Send to each window
     $successCount = 0
     foreach ($win in $windows) {
-        Write-Host "   $($win.Commander)..." -NoNewline
+        Write-Host "$($win.Commander)..." -NoNewline
         
         $charSuccess = 0
         foreach ($char in $Command.ToCharArray()) {
@@ -250,7 +250,7 @@ else {
 Write-Host ("-" * 70) -ForegroundColor DarkGray
 
 # Test Elite window detection
-Write-Host "🔍 Scanning for Elite windows..." -ForegroundColor Cyan
+Write-Host "Scanning for Elite windows..." -ForegroundColor Cyan
 $windows = Get-EliteWindows
 if ($windows.Count -gt 0) {
     Write-Host "Found $($windows.Count) window(s):" -ForegroundColor Green
