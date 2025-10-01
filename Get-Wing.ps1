@@ -276,6 +276,6 @@ if ($config.pgEntry -and $introSkipped) {
 # Python - nonfunctional at time of commit
 # Start-Process -WorkingDirectory $PSScriptRoot -FilePath $config.pythonPath -ArgumentList 'input_broadcast.py'
 
-# PowerShell - run in new process independently
-$inputBroadcast_scriptPath = Join-Path -path $PSScriptRoot -ChildPath 'input_broadcast.ps1'
-Start-Process powershell.exe -ArgumentList "-File $inputBroadcast_scriptPath"
+# PowerShell - run in new process independently - also nonfunctional
+# $inputBroadcast_scriptPath = Join-Path -path $PSScriptRoot -ChildPath 'input_broadcast.ps1'
+# Start-Process powershell.exe -ArgumentList "-File $inputBroadcast_scriptPath"
