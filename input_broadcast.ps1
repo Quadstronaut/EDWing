@@ -136,7 +136,7 @@ function Send-KeyToWindow {
     $vkCode = Get-VirtualKeyCode -Char $Char
     
     if ($null -eq $vkCode) {
-        Write-Host "  ⚠️  Unsupported character: '$Char'" -ForegroundColor Yellow
+        Write-Host "Unsupported character: '$Char'" -ForegroundColor Yellow
         return $false
     }
     
@@ -164,7 +164,7 @@ function Send-KeyToWindow {
         return $true
     }
     catch {
-        Write-Host "  ❌ Error sending '$Char' to $Commander`: $_" -ForegroundColor Red
+        Write-Host "Error sending '$Char' to $Commander`: $_" -ForegroundColor Red
         return $false
     }
 }
@@ -179,13 +179,13 @@ function Send-CommandToWindows {
         return
     }
     
-    Write-Host "`n🎯 Broadcasting: '$Command'" -ForegroundColor Cyan
+    Write-Host "`nBroadcasting: '$Command'" -ForegroundColor Cyan
     
     # Find Elite windows
     $windows = Get-EliteWindows
     
     if ($windows.Count -eq 0) {
-        Write-Host "⚠️  No Elite Dangerous windows found!" -ForegroundColor Yellow
+        Write-Host "No Elite Dangerous windows found!" -ForegroundColor Yellow
         return
     }
     
@@ -211,13 +211,13 @@ function Send-CommandToWindows {
             Start-Sleep -Milliseconds $config.KeySendDelay
         }
         
-        Write-Host " ✅ ($charSuccess/$($Command.Length))" -ForegroundColor Green
+        Write-Host "($charSuccess/$($Command.Length))" -ForegroundColor Green
         $successCount++
         
         Start-Sleep -Milliseconds 100
     }
     
-    Write-Host "🎉 Sent to $successCount/$($windows.Count) windows" -ForegroundColor Green
+    Write-Host "Sent to $successCount/$($windows.Count) windows" -ForegroundColor Green
     Write-Host ("-" * 50) -ForegroundColor DarkGray
     Write-Host "Ready for next command..." -ForegroundColor Cyan
 }
@@ -241,10 +241,10 @@ Write-Host ""
 # Check for -UseDirect parameter
 $useDirect = $args -contains "-UseDirect"
 if ($useDirect) {
-    Write-Host "🔧 Using PostMessage (direct)" -ForegroundColor Green
+    Write-Host "Using PostMessage (direct)" -ForegroundColor Green
 }
 else {
-    Write-Host "🔧 Using keybd_event (focus mode, like autohonk)" -ForegroundColor Green
+    Write-Host "Using keybd_event (focus mode, like autohonk)" -ForegroundColor Green
 }
 
 Write-Host ("-" * 70) -ForegroundColor DarkGray
@@ -253,13 +253,13 @@ Write-Host ("-" * 70) -ForegroundColor DarkGray
 Write-Host "🔍 Scanning for Elite windows..." -ForegroundColor Cyan
 $windows = Get-EliteWindows
 if ($windows.Count -gt 0) {
-    Write-Host "✅ Found $($windows.Count) window(s):" -ForegroundColor Green
+    Write-Host "Found $($windows.Count) window(s):" -ForegroundColor Green
     foreach ($win in $windows) {
         Write-Host "   • $($win.Commander)" -ForegroundColor Gray
     }
 }
 else {
-    Write-Host "⚠️  No Elite windows found" -ForegroundColor Yellow
+    Write-Host "No Elite windows found" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -277,7 +277,7 @@ try {
             
             # Handle Ctrl+C
             if ($key.Key -eq 'C' -and $key.Modifiers -eq 'Control') {
-                Write-Host "`n🛑 Exiting..." -ForegroundColor Yellow
+                Write-Host "`n Exiting..." -ForegroundColor Yellow
                 break
             }
             
@@ -320,8 +320,8 @@ try {
     }
 }
 catch {
-    Write-Host "`n❌ Error: $_" -ForegroundColor Red
+    Write-Host "`nError: $_" -ForegroundColor Red
 }
 finally {
-    Write-Host "`n👋 Goodbye!" -ForegroundColor Cyan
+    Write-Host "`nGoodbye!" -ForegroundColor Cyan
 }
