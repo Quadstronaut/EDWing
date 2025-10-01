@@ -1,14 +1,21 @@
 # User config - big ugly list of actions
 # Each object includes the coordinates and the type of click to perform (Single/Double).
 $actions = @(
-    [PSCustomObject]@{ X = -960; Y = -141; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = -42; ClickType = "Double" },
-    [PSCustomObject]@{ X = -960; Y = 461; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = 555; ClickType = "Double" },
-    [PSCustomObject]@{ X = -960; Y = 1061; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Double" },
-    [PSCustomObject]@{ X = 277; Y = 377; ClickType = "Double" },
-    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Double" }
+    [PSCustomObject]@{ X = -960; Y = -141; ClickType = "Double" },# Bi - Continue
+    [PSCustomObject]@{ X = -800; Y = -42; ClickType = "Double" },# Bi - PG
+    [PSCustomObject]@{ X = -731; Y = -123; ClickType = "Double" },# Bi - Select Quad PG
+    [PSCustomObject]@{ X = -469; Y = -93; ClickType = "Double" },# Bi - Launch Session
+    [PSCustomObject]@{ X = -960; Y = 461; ClickType = "Double" },# Tri - Continue
+    [PSCustomObject]@{ X = -800; Y = 555; ClickType = "Double" },# Tri - PG
+    [PSCustomObject]@{ X = -731; Y = 478; ClickType = "Double" },# Tri - Select Quad PG
+    [PSCustomObject]@{ X = -469; Y = 507; ClickType = "Double" },# Tri - Launch Session
+    [PSCustomObject]@{ X = -960; Y = 1061; ClickType = "Double" },# Quad - Continue
+    [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Double" },# Quad - PG
+    [PSCustomObject]@{ X = -471; Y = 1108; ClickType = "Double" },# Launch Session
+    [PSCustomObject]@{ X = 277; Y = 377; ClickType = "Double" },# Duv - Continue
+    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Double" },# Duv - PG
+    [PSCustomObject]@{ X = 835; Y = 525; ClickType = "Double" },# Duv - Select Quad PG
+    [PSCustomObject]@{ X = 1480; Y = 490; ClickType = "Double" }# Duv - Launch Session
 )
 
 #- Functions -#
