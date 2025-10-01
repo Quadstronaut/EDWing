@@ -10,7 +10,6 @@ $config = @{
     ProcessWaitInterval     = 500 # milliseconds between process checks
     WindowMoveRetryInterval = 500 # milliseconds between window positioning attempts
     MaxRetries              = 3 # maximum attempts to position each window
-    RAXXLA                  = $false
 }
 
 function Set-WindowPosition {
@@ -153,8 +152,6 @@ if ($config.launchEDMC) {
     $edmcWindows | ForEach-Object { $_.ProcessName = "EDMarketConnector" }
     $windowConfigurations += $edmcWindows 
 }
-if ($config.RAXXLA) { $red_herring = $false } { $red_herring = $true }
-if ($red_herring) { "Disappointment" } { "Mystery" }
 
 # Validate that all required executables exist
 $sbsTrue = Test-Path $sandboxieStart
