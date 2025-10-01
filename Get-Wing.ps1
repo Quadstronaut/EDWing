@@ -273,4 +273,4 @@ if ($config.pgEntry -and $introSkipped) {
     & $scriptB_path
 }
 
-Start-Process -WorkingDirectory $PSScriptRoot -FilePath $config.pythonPath -ArgumentList 'input_broadcast.py'
+# Start-Process -WorkingDirectory $PSScriptRoot -FilePath $config.pythonPath -ArgumentList 'input_broadcast.py'
