@@ -1,20 +1,18 @@
 """
-Elite Dangerous Command Relay - Fixed Looping Version
-Key changes:
-1. Longer delays between keys (Elite needs time to process)
-2. Longer focus delay after SetForegroundWindow
-3. File-based input to avoid console focus stealing
-4. Continuous loop with command file monitoring
+Elite Dangerous Command Relay - Multi-Window Input Broadcasting
+Uses PostMessage (WM_KEYDOWN/WM_KEYUP) - THE WORKING METHOD from your window library
 
 Requirements:
 - pip install pywin32
 """
 
 import time
+import threading
 import logging
 from typing import List, Tuple, Optional
-from pathlib import Path
-import os
+import sys
+import msvcrt
+import ctypes
 
 # Windows API imports
 import win32api
@@ -28,11 +26,10 @@ CONFIG = {
     "process_name": "elitedangerous64",
     "commanders": ["Bistronaut", "Tristronaut", "Quadstronaut"],
     "primary_commander": "Duvrazh",
-    "key_send_delay": 0.15,      # 150ms between keys
-    "focus_delay": 0.5,          # 500ms after focusing window
-    "inter_window_delay": 1.0,   # 1 second between windows
-    "command_file": "elite_commands.txt",  # File to read commands from
-    "check_interval": 0.5,       # How often to check for new commands
+    "typing_timeout": 2.0,      # 2 seconds as requested
+    "key_press_duration": 0.1,  # Duration to hold key (like your library)
+    "key_send_delay": 0.05,     # Delay between keys
+    "window_delay": 0.2,        # Delay between windows
 }
 
 # Logging setup
@@ -47,38 +44,45 @@ logger = logging.getLogger(__name__)
 class CommandRelay:
     def __init__(self):
         self.all_commanders = CONFIG["commanders"] + [CONFIG["primary_commander"]]
+        self.command_buffer = ""
+        self.last_keypress_time = 0
         self.running = True
-        self.command_file = Path(CONFIG["command_file"])
-        self.last_modified = 0
+        self.input_thread = None
+        self.timer_thread = None
+        self.buffer_lock = threading.Lock()
+        self.console_hwnd = None
         
-        # Create command file if it doesn't exist
-        if not self.command_file.exists():
-            self.command_file.write_text("")
-            self.last_modified = self.command_file.stat().st_mtime
+        # Get our console window handle
+        self.console_hwnd = self.get_console_window()
         
         print("=" * 70)
-        print("Elite Dangerous Command Relay - FIXED LOOPING VERSION")
+        print("Elite Dangerous Command Relay - PostMessage Method")
+        print("Using WM_KEYDOWN/WM_KEYUP like your working window library!")
         print("=" * 70)
         print(f"Looking for process: '{CONFIG['process_name']}.exe'")
         print(f"Window title must contain: '{CONFIG['window_title_contains']}'")
         print(f"Named commanders: {', '.join(CONFIG['commanders'])}")
         print(f"Primary commander: {CONFIG['primary_commander']}")
         print("")
-        print("USAGE:")
-        print(f"1. Write commands to: {self.command_file.absolute()}")
-        print("2. Commands are sent automatically when file is saved")
-        print("3. File is cleared after each broadcast")
-        print("")
-        print("EXAMPLES:")
-        print("  w w s s")
-        print("  1 q q d")
-        print("  w a s d")
-        print("")
-        print("Press Ctrl+C to exit")
+        print("INSTRUCTIONS:")
+        print("1. Focus this console window")
+        print("2. Type your command (e.g., '1qq' or 'swsw')")
+        print(f"3. Wait {CONFIG['typing_timeout']} seconds - command broadcasts to ALL Elite windows")
+        print("4. Press Ctrl+C to exit")
         print("-" * 70)
 
+    def get_console_window(self) -> Optional[int]:
+        """Get the console window handle using kernel32."""
+        try:
+            kernel32 = ctypes.windll.kernel32
+            hwnd = kernel32.GetConsoleWindow()
+            return hwnd if hwnd else None
+        except Exception as e:
+            logger.error(f"Error getting console window handle: {e}")
+            return None
+
     def find_elite_window(self, target_commander: str = None) -> Optional[int]:
-        """Find Elite Dangerous window handle - EXACT copy from autohonk.py"""
+        """Find Elite Dangerous window handle."""
         def enum_windows_callback(hwnd, windows):
             try:
                 if win32gui.IsWindowVisible(hwnd):
@@ -117,6 +121,7 @@ class CommandRelay:
             
             if windows:
                 hwnd, title, commander = windows[0]
+                logger.info(f"Found Elite window for {target_commander or 'testing'}: '{title}'")
                 return hwnd
             else:
                 return None
@@ -143,7 +148,7 @@ class CommandRelay:
         return all_windows
 
     def get_virtual_key_code(self, key: str) -> Optional[int]:
-        """Get Windows virtual key code - EXACT copy from autohonk.py"""
+        """Get Windows virtual key code."""
         special_keys = {
             ' ': win32con.VK_SPACE,
             '\n': win32con.VK_RETURN,
@@ -158,30 +163,40 @@ class CommandRelay:
         else:
             return None
 
+    def press_key(self, hwnd: int, key_code: int, duration: float = None):
+        """
+        Press a key using PostMessage - EXACT method from your working library!
+        def press(self, key, duration=.1):
+            self.key_down(key)
+            time.sleep(duration)
+            self.key_up(key)
+        """
+        if duration is None:
+            duration = CONFIG["key_press_duration"]
+        
+        # Key down - PostMessage with WM_KEYDOWN
+        win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, key_code, 0)
+        time.sleep(duration)
+        # Key up - PostMessage with WM_KEYUP
+        win32api.PostMessage(hwnd, win32con.WM_KEYUP, key_code, 0)
+
     def send_keys_to_window(self, hwnd: int, command: str, commander: str) -> bool:
-        """Send entire command to a window with proper timing."""
+        """Send entire command to a window using PostMessage."""
         try:
-            print(f"🎯 Focusing {commander}...")
-            win32gui.SetForegroundWindow(hwnd)
-            time.sleep(CONFIG["focus_delay"])
+            print(f"🎯 Sending '{command}' to {commander} using PostMessage...")
             
-            print(f"📤 Sending '{command}' to {commander}...")
-            
-            for i, char in enumerate(command):
+            # Send each character
+            for char in command:
                 vk_code = self.get_virtual_key_code(char)
                 if vk_code is None:
-                    print(f"⚠️  Unknown key: {char}")
+                    print(f"⚠️ Unknown key: {char}")
                     continue
                 
-                # Key down
-                win32api.keybd_event(vk_code, 0, 0, 0)
-                time.sleep(0.05)
+                # Use PostMessage method - EXACT copy from your library
+                self.press_key(hwnd, vk_code)
                 
-                # Key up
-                win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
-                
-                if i < len(command) - 1:
-                    time.sleep(CONFIG["key_send_delay"])
+                # Delay between keys
+                time.sleep(CONFIG["key_send_delay"])
             
             print(f"✅ Sent {len(command)} keys to {commander}")
             return True
@@ -196,82 +211,122 @@ class CommandRelay:
         if not command.strip():
             return
             
-        print(f"\n{'=' * 70}")
-        print(f"🚀 Broadcasting: '{command}'")
-        print(f"{'=' * 70}")
+        print(f"\n🚀 Broadcasting command: '{command}' (length: {len(command)})")
         
+        # Find all Elite windows
         windows = self.find_all_elite_windows()
         
         if not windows:
-            print("❌ No Elite Dangerous windows found!")
+            print("⚠️  No Elite Dangerous windows found!")
             return
         
-        print(f"\n📡 Found {len(windows)} Elite window(s):")
+        print(f"📡 Found {len(windows)} Elite window(s):")
         for _, title, commander in windows:
-            print(f"   • {commander}")
+            print(f"   • {commander}: {title}")
         
-        print(f"\n🎮 Sending commands...\n")
+        print("\n🎮 Sending commands with PostMessage...")
         
+        # Send to each window
         success_count = 0
-        for i, (hwnd, title, commander) in enumerate(windows):
+        for hwnd, title, commander in windows:
             if self.send_keys_to_window(hwnd, command, commander):
                 success_count += 1
-            
-            if i < len(windows) - 1:
-                print(f"⏳ Waiting {CONFIG['inter_window_delay']}s before next window...\n")
-                time.sleep(CONFIG["inter_window_delay"])
+            time.sleep(CONFIG["window_delay"])
         
-        print(f"\n{'=' * 70}")
-        print(f"🎉 Results: {success_count}/{len(windows)} windows")
-        print(f"{'=' * 70}\n")
+        print(f"\n🎉 Successfully sent to {success_count}/{len(windows)} windows")
+        
+        # Focus back to console
+        if self.console_hwnd:
+            try:
+                win32gui.SetForegroundWindow(self.console_hwnd)
+                time.sleep(0.1)
+                print("🔄 Console refocused - ready for next command")
+            except:
+                pass
+        
+        print("-" * 70)
 
-    def check_for_commands(self):
-        """Check if command file has been modified and process commands."""
-        try:
-            if not self.command_file.exists():
-                return
-            
-            current_modified = self.command_file.stat().st_mtime
-            
-            if current_modified > self.last_modified:
-                self.last_modified = current_modified
+    def input_monitor(self):
+        """Monitor for keyboard input in the console."""
+        print("🎧 Input monitor started. Type your commands...")
+        
+        while self.running:
+            try:
+                if msvcrt.kbhit():
+                    char = msvcrt.getch().decode('utf-8', errors='ignore')
+                    
+                    if ord(char) == 3:  # Ctrl+C
+                        print("\n🛑 Ctrl+C detected - shutting down...")
+                        self.running = False
+                        break
+                    elif ord(char) == 8:  # Backspace
+                        with self.buffer_lock:
+                            if self.command_buffer:
+                                self.command_buffer = self.command_buffer[:-1]
+                                print(f"\rCommand: '{self.command_buffer}'", end=" " * 10, flush=True)
+                                self.last_keypress_time = time.time()
+                        continue
+                    elif ord(char) == 13:  # Enter
+                        char = '\n'
+                    
+                    with self.buffer_lock:
+                        self.command_buffer += char
+                        self.last_keypress_time = time.time()
+                        print(f"\rCommand: '{self.command_buffer}'", end="", flush=True)
                 
-                # Read command
-                command = self.command_file.read_text().strip()
+                time.sleep(0.01)
                 
-                if command:
-                    # Send command
-                    self.send_command_to_all_windows(command)
-                    
-                    # Clear file
-                    self.command_file.write_text("")
-                    self.last_modified = self.command_file.stat().st_mtime
-                    
-                    print("✅ Ready for next command...\n")
-                    
-        except Exception as e:
-            logger.error(f"Error checking commands: {e}")
+            except Exception as e:
+                logger.error(f"Error in input monitor: {e}")
+                time.sleep(0.1)
+
+    def timer_monitor(self):
+        """Monitor for typing timeout and send commands when ready."""
+        while self.running:
+            try:
+                with self.buffer_lock:
+                    if (self.command_buffer and 
+                        self.last_keypress_time > 0 and 
+                        time.time() - self.last_keypress_time >= CONFIG["typing_timeout"]):
+                        
+                        command_to_send = self.command_buffer
+                        self.command_buffer = ""
+                        self.last_keypress_time = 0
+                        
+                        print()  # New line
+                        self.send_command_to_all_windows(command_to_send)
+                
+                time.sleep(0.1)
+                
+            except Exception as e:
+                logger.error(f"Error in timer monitor: {e}")
+                time.sleep(0.1)
 
     def run(self):
-        """Main execution loop."""
+        """Main execution logic."""
         try:
-            # Test window detection on startup
+            # Test window detection
             print("🔍 Testing window detection...")
             windows = self.find_all_elite_windows()
             if windows:
                 print(f"✅ Found {len(windows)} Elite window(s):")
                 for _, title, commander in windows:
-                    print(f"   • {commander}")
+                    print(f"   • {commander}: {title}")
             else:
                 print("⚠️  No Elite windows found - make sure Elite is running!")
             
-            print(f"\n🎮 Monitoring {self.command_file.absolute()}")
-            print("✅ Ready! Write commands to the file and save.\n")
+            print("\n🎮 Ready for input! Type commands and wait 2 seconds...")
+            
+            # Start monitoring threads
+            self.input_thread = threading.Thread(target=self.input_monitor, daemon=True)
+            self.input_thread.start()
+            
+            self.timer_thread = threading.Thread(target=self.timer_monitor, daemon=True)
+            self.timer_thread.start()
             
             # Main loop
             while self.running:
-                self.check_for_commands()
-                time.sleep(CONFIG["check_interval"])
+                time.sleep(0.1)
                 
         except KeyboardInterrupt:
             print("\n🛑 Shutting down...")
@@ -282,7 +337,8 @@ class CommandRelay:
 
 def main():
     """Main function."""
-    print("Starting Elite Dangerous Command Relay...\n")
+    print("Starting Elite Dangerous Command Relay...")
+    print("Using PostMessage (WM_KEYDOWN/WM_KEYUP) method\n")
     
     relay = CommandRelay()
     relay.run()
