@@ -1,33 +1,17 @@
-# Load the required .NET assembly for Windows Forms, which contains the Cursor class.
-try {
-    Add-Type -AssemblyName System.Windows.Forms
-}
-catch {
-    Write-Host "Error: Failed to load System.Windows.Forms assembly." -ForegroundColor Red
-    Write-Host "Please ensure you are running this on a Windows environment with .NET installed." -ForegroundColor Red
-    return
-}
+# User config - big ugly list of actions
+# Each object includes the coordinates and the type of click to perform (Single/Double).
+$actions = @(
+    [PSCustomObject]@{ X = -960; Y = -141; ClickType = "Double" },
+    [PSCustomObject]@{ X = -800; Y = -42; ClickType = "Double" },
+    [PSCustomObject]@{ X = -960; Y = 461; ClickType = "Double" },
+    [PSCustomObject]@{ X = -800; Y = 555; ClickType = "Double" },
+    [PSCustomObject]@{ X = -960; Y = 1061; ClickType = "Double" },
+    [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Double" },
+    [PSCustomObject]@{ X = 277; Y = 377; ClickType = "Double" },
+    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Double" } # Work, damn you!
+)
 
-# Define the mouse event constants for the Windows API.
-$MOUSEEVENTF_LEFTDOWN = 0x0002
-$MOUSEEVENTF_LEFTUP = 0x0004
-
-# Use PInvoke to import the `mouse_event` function from user32.dll.
-# This function is used to send mouse events directly to the operating system.
-$Signature = @'
-[DllImport("user32.dll")]
-public static extern void mouse_event(
-    int dwFlags,
-    int dx,
-    int dy,
-    int cButtons,
-    int dwExtraInfo
-);
-'@
-
-# Add the C# type definition to PowerShell.
-Add-Type -MemberDefinition $Signature -Namespace Win32 -Name MouseAPI
-
+#- Functions -#
 function Set-SingleClickAtPosition {
     [CmdletBinding()]
     param(
@@ -57,7 +41,6 @@ function Set-SingleClickAtPosition {
         Write-Host $_.Exception.Message -ForegroundColor Yellow
     }
 }
-
 function Set-DoubleClickAtPosition {
     [CmdletBinding()]
     param(
@@ -97,24 +80,42 @@ function Set-DoubleClickAtPosition {
     }
 }
 
-# Define the list of actions (clicks) to perform.
-# Each object includes the coordinates and the type of click to perform.
-$actions = @(
-    [PSCustomObject]@{ X = -960; Y = -141; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = -42; ClickType = "Double" },
-    [PSCustomObject]@{ X = -960; Y = 461; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = 555; ClickType = "Double" },
-    [PSCustomObject]@{ X = -960; Y = 1061; ClickType = "Double" },
-    [PSCustomObject]@{ X = -800; Y = 1111; ClickType = "Double" },
-    [PSCustomObject]@{ X = 277; Y = 377; ClickType = "Double" },
-    [PSCustomObject]@{ X = 666; Y = 666; ClickType = "Double" } # Work, damn you!
-)
+#- Prep -#
+# Load the required .NET assembly for Windows Forms, which contains the Cursor class.
+try {
+    Add-Type -AssemblyName System.Windows.Forms
+}
+catch {
+    Write-Host "Error: Failed to load System.Windows.Forms assembly." -ForegroundColor Red
+    Write-Host "Please ensure you are running this on a Windows environment with .NET installed." -ForegroundColor Red
+    return
+}
 
+# Define the mouse event constants for the Windows API.
+$MOUSEEVENTF_LEFTDOWN = 0x0002
+$MOUSEEVENTF_LEFTUP = 0x0004
+
+# Use PInvoke to import the `mouse_event` function from user32.dll.
+# This function is used to send mouse events directly to the operating system.
+$Signature = @'
+[DllImport("user32.dll")]
+public static extern void mouse_event(
+    int dwFlags,
+    int dx,
+    int dy,
+    int cButtons,
+    int dwExtraInfo
+);
+'@
+
+# Add the C# type definition to PowerShell.
+Add-Type -MemberDefinition $Signature -Namespace Win32 -Name MouseAPI
 Write-Host "Starting automated mouse script." -ForegroundColor Cyan
 Write-Host "The script will process each coordinate with a delay between them." -ForegroundColor Cyan
 Write-Host "Press Ctrl+C at any time to stop the script." -ForegroundColor Gray
 Write-Host "--------------------------------------------------------"
 
+#- Action -#
 # Loop through each action in the list and perform the specified click.
 foreach ($action in $actions) {
     if ($action.ClickType -eq "Double") {
@@ -126,11 +127,6 @@ foreach ($action in $actions) {
     else {
         Write-Host "Warning: Unknown click type $($action.ClickType) for coordinates $($action.X), $($action.Y). Skipping." -ForegroundColor Yellow
     }
-
     # Pause between each action to prevent issues with focus or application responsiveness.
-    Write-Host "Pausing for 2 seconds before the next action..." -ForegroundColor DarkGray
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 1
 }
-
-Write-Host "--------------------------------------------------------"
-Write-Host "Script completed." -ForegroundColor Cyan
