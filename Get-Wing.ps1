@@ -1,17 +1,17 @@
 # Configuration constants
 $config = @{
-    launchEliteDangerous    = $true # Elite - Dangerous (CLIENT)
-    skipIntro               = $true # Launch_app skip intro
-    pgEntry                 = $true # Launch a script to select Continue and PG
-    launchEDEB              = $false # Elite Dangerous Exploration Buddy
-    launchEDMC              = $true # Elite Dangerous Market Connector
-    pythonPath              = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
-    WindowPollInterval      = 333 # milliseconds between window detection checks
-    ProcessWaitInterval     = 500 # milliseconds between process checks
-    WindowMoveRetryInterval = 500 # milliseconds between window positioning attempts
-    MaxRetries              = 3 # maximum attempts to position each window
+    launchEliteDangerous           = $true # Elite - Dangerous (CLIENT)
+    skipIntro                      = $true # Launch_app skip intro
+    pgEntry                        = $true # Launch a script to select Continue and PG
+    launchEDEB                     = $false # Elite Dangerous Exploration Buddy
+    launchEDMC                     = $true # Elite Dangerous Market Connector
+    pythonPath                     = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
+    WindowPollInterval             = 333 # milliseconds between window detection checks
+    ProcessWaitInterval            = 500 # milliseconds between process checks
+    WindowMoveRetryInterval        = 500 # milliseconds between window positioning attempts
+    MaxRetries                     = 3 # maximum attempts to position each window
+    StopCustomServicesAndProcesses = $true
 }
-
 function Set-WindowPosition {
     param(
         [Parameter(Mandatory)]
@@ -38,7 +38,7 @@ function Set-WindowPosition {
         
         [switch]$Maximize
     )
-    
+
     # C# code to call the Windows API functions
     Add-Type -TypeDefinition @"
         using System;
@@ -51,16 +51,15 @@ function Set-WindowPosition {
             public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
         }
 "@
-    
     # Flag values for the SetWindowPos function
     $SWP_NOZORDER = 4
-    
+
     # Constants for ShowWindowAsync
     $SW_MAXIMIZE = 3
 
     # Find the process by name and window title
     $process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like "*$WindowTitle*" }
-    
+
     if ($process) {
         $handle = $process.MainWindowHandle
 
@@ -89,7 +88,6 @@ function Set-WindowPosition {
                 return $false
             }
         }
-        
         return $true
     }
     else {
@@ -106,12 +104,21 @@ $cmdrNames = @(
     "CMDRTristronaut",
     "CMDRQuadstronaut"
 )
-
 # Alt Elite Dangerous commander names (excluding the first CMDR from the list)
 $eliteDangerousCmdrs = $cmdrNames | Select-Object -Skip 1
 
 # Executable paths - centralized for easier maintenance
 $sandboxieStart = 'C:\Users\Quadstronaut\scoop\apps\sandboxie-plus-np\current\Start.exe'
+
+# Stop custom process list
+if ($config.StopCustomServicesAndProcesses) {
+    # This section shuold be specific only to you.
+    # Erase everything and make it yours.
+    # I only had a few tasks for the sake of cpu availability.
+    Get-Process -Name "*battle.net*", "*epic*", "*gog*", "*steam*", "*discord*", "*ollama*" | Stop-Process -Force
+    Get-ScheduledTask 'Syncthing' | Stop-ScheduledTask
+    Get-Service -Name "Everything", "Filezilla Server" | Stop-Service
+}
 
 # Create a single list of all windows to manage
 if ($config.launchEliteDangerous) {
