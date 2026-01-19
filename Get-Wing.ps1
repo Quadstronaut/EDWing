@@ -4,13 +4,13 @@ $config = @{
     skipIntro                      = $true # Launch_app skip intro
     pgEntry                        = $true # Launch a script to select Continue and PG
     launchEDEB                     = $false # Elite Dangerous Exploration Buddy
-    launchEDMC                     = $true # Elite Dangerous Market Connector
+    launchEDMC                     = $false # Elite Dangerous Market Connector
     pythonPath                     = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
-    WindowPollInterval             = 333 # milliseconds between window detection checks
-    ProcessWaitInterval            = 500 # milliseconds between process checks
-    WindowMoveRetryInterval        = 500 # milliseconds between window positioning attempts
+    WindowPollInterval             = 3333 # milliseconds between window detection checks
+    ProcessWaitInterval            = 3333 # milliseconds between process checks
+    WindowMoveRetryInterval        = 3333 # milliseconds between window positioning attempts
     MaxRetries                     = 3 # maximum attempts to position each window
-    StopCustomServicesAndProcesses = $true
+    StopCustomServicesAndProcesses = $false
 }
 function Set-WindowPosition {
     param(
