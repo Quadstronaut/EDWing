@@ -4,7 +4,7 @@ $config = @{
     skipIntro                      = $true # Launch_app skip intro
     pgEntry                        = $true # Launch a script to select Continue and PG
     launchEDEB                     = $false # Elite Dangerous Exploration Buddy
-    launchEDMC                     = $false # Elite Dangerous Market Connector
+    launchEDMC                     = $true # Elite Dangerous Market Connector
     pythonPath                     = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
     WindowPollInterval             = 3333 # milliseconds between window detection checks
     ProcessWaitInterval            = 3333 # milliseconds between process checks
@@ -108,6 +108,7 @@ $cmdrNames = @(
 $eliteDangerousCmdrs = $cmdrNames | Select-Object -Skip 1
 
 # Executable paths - centralized for easier maintenance
+$edmc_path = 'G:\EliteApps\EDMarketConnector\EDMarketConnector.exe'
 $sandboxieStart = 'C:\Users\Quadstronaut\scoop\apps\sandboxie-plus-np\current\Start.exe'
 
 # Stop custom process list
@@ -157,7 +158,7 @@ if ($config.launchEDMC) {
     )
     # Assign process names to window configurations
     $edmcWindows | ForEach-Object { $_.ProcessName = "EDMarketConnector" }
-    $windowConfigurations += $edmcWindows 
+    $windowConfigurations += $edmcWindows
 }
 
 # Validate that all required executables exist
@@ -174,6 +175,11 @@ if ($all_apps_are_go) {
         $arguments = "/box:$($cmdrNames[$i]) `"$minEDLauncher`" /frontier Account$($i+1) /edo /autorun /autoquit /skipInstallPrompt"
         Start-Process -FilePath $sandboxieStart -ArgumentList $arguments
         Write-Host "Launched $($cmdrNames[$i]) in sandbox"
+        if ($config.launchEDMC) {
+            $arguments = "/box:$($cmdrNames[$i]) `"$edmc_path`""
+            Start-Process -FilePath $sandboxieStart -ArgumentList $arguments
+            Write-Host "Launched EDMC in sandbox $($cmdrNames[$i])"
+        }
     }
 
     # --- WINDOW DETECTION PHASE ---
