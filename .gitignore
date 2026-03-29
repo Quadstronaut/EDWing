@@ -4,6 +4,9 @@
 # Do not ignore the example configuration file
 !wing.conf.ps1.example
 
+# MinEdLauncher credential backups (DPAPI-encrypted, still sensitive)
+cred_backup/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

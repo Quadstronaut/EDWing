@@ -1,14 +1,9 @@
-# This file is used to store configuration data for the
-# get-wing.ps1 script, such as CMDR names.
-# To use it, place it in the same directory as the PowerShell script.
-# Unfortunately, if it's file extension isn't .ps1 it will probably
-# query you as to how you want to open the conf file.
+# wing.conf.ps1 - Local configuration overrides for Get-Wing.ps1
+# Copy this file to the repo root as 'wing.conf.ps1' and edit to taste.
+# Any variable set here overrides the default in Get-Wing.ps1.
+# This file is gitignored.
 
-# This is all very important you know.
-
-# Define an array of CMDR names to be used in the script.
-# Add or remove names from this list to change the number of windows launched.
-# The order here determines the order in which they are assigned to Elite Dangerous and EDMC instances.
+# Commander names (order matters: first = primary monitor, rest = alt monitors)
 $cmdrNames = @(
     "CMDRUnistronaut",
     "CMDRBistronaut",
@@ -16,29 +11,28 @@ $cmdrNames = @(
     "CMDRQuadstronaut"
 )
 
-# Define the paths for your executables
-# These can be moved here to keep the main script cleaner
+# Executable paths
 $sandboxieStart = 'C:\PATH\TO\SANDBOXIE\Start.exe'
-$edminlauncher = 'C:\PATH\TO\STEAM\MinEdLauncher.exe'
+$minEDLauncher  = 'C:\PATH\TO\STEAM\MinEdLauncher.exe'
+$edmc_path      = 'C:\PATH\TO\EDMarketConnector.exe'
+$edebLauncher   = 'C:\PATH\TO\EDEB\Elite Dangerous Exploration Buddy.exe'
 
-# These are the values I use on my system. Yours will be different. It's basic X and Y. I believe in you.
+# Feature toggles (uncomment to override)
+# $config.launchEliteDangerous           = $true
+# $config.launchEDEB                     = $false
+# $config.launchEDMC                     = $false
+# $config.skipIntro                      = $true
+# $config.pgEntry                        = $true
+# $config.StopCustomServicesAndProcesses = $false
 
-# Define the Elite Dangerous accounts to move and their target coordinates/dimensions
-$client = @(
-    @{ Name = $eliteDangerousCmdrs[0]; X = -1080; Y = -387; Width = 800; Height = 600; Moved = $false },
-    @{ Name = $eliteDangerousCmdrs[1]; X = -1080; Y = 213; Width = 800; Height = 600; Moved = $false },
-    @{ Name = $eliteDangerousCmdrs[2]; X = -1080; Y = 813; Width = 800; Height = 600; Moved = $false }
-)
+# Timing (milliseconds unless noted)
+# $config.WindowPollInterval         = 3333
+# $config.ProcessWaitInterval        = 3333
+# $config.WindowMoveRetryInterval    = 3333
+# $config.MaxRetries                 = 3
+# $config.EliteWindowSettleSeconds   = 7   # seconds
 
-# Define the EDMC accounts to move and their target coordinates/dimensions
-$edmc = @(
-    @{ Name = $cmdrNames[0]; X = 100; Y = 100; Width = 300; Height = 600; Moved = $false },
-    @{ Name = $cmdrNames[1]; X = -280; Y = -387; Width = 300; Height = 600; Moved = $false },
-    @{ Name = $cmdrNames[2]; X = -280; Y = 213; Width = 300; Height = 600; Moved = $false },
-    @{ Name = $cmdrNames[3]; X = -280; Y = 813; Width = 300; Height = 600; Moved = $false }
-)
-
-# Elite Dangerous Exploration Buddy
-$edeb = @(
-    @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; Maximize = $true; Moved = $false }
-)
+# Window positions for alt-monitor Elite clients
+# These are X/Y pixel offsets. Negative values = left/above primary monitor.
+# $eliteWindows is built from $eliteDangerousCmdrs after config loads,
+# so override the $cmdrNames above to control which names appear.
