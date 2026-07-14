@@ -1,38 +1,53 @@
 # wing.conf.ps1 - Local configuration overrides for Get-Wing.ps1
 # Copy this file to the repo root as 'wing.conf.ps1' and edit to taste.
-# Any variable set here overrides the default in Get-Wing.ps1.
-# This file is gitignored.
+# It is dot-sourced after the defaults, so anything set here overrides them.
+# This file is gitignored (it holds machine-specific paths and CMDR names).
 
-# Commander names (order matters: first = primary monitor, rest = alt monitors)
+# --- Commander boxes ---
+# Order = launch order; index i maps to min-ed profile Account(i+1).
+# First entry is the "primary" CMDR (main monitor in tiled mode).
 $cmdrNames = @(
-    "CMDRUnistronaut",
+    "CMDRDuvrazh",
     "CMDRBistronaut",
     "CMDRTristronaut",
     "CMDRQuadstronaut"
 )
 
-# Executable paths
-$sandboxieStart = 'C:\PATH\TO\SANDBOXIE\Start.exe'
-$minEDLauncher  = 'C:\PATH\TO\STEAM\MinEdLauncher.exe'
-$edmc_path      = 'C:\PATH\TO\EDMarketConnector.exe'
-$edebLauncher   = 'C:\PATH\TO\EDEB\Elite Dangerous Exploration Buddy.exe'
+# --- Executable paths ---
+$sandboxieStart = 'C:\PATH\TO\sandboxie-plus\Start.exe'
+$minEDLauncher  = 'C:\PATH\TO\Elite Dangerous\MinEdLauncher.exe'
+$edmc_path      = 'C:\PATH\TO\EDMarketConnector.exe'   # only if $config.launchEDMC
 
-# Feature toggles (uncomment to override)
-# $config.launchEliteDangerous           = $true
-# $config.launchEDEB                     = $false
-# $config.launchEDMC                     = $false
-# $config.skipIntro                      = $true
-# $config.pgEntry                        = $true
-# $config.StopCustomServicesAndProcesses = $false
+# --- Feature toggles (uncomment to override) ---
+# $config.windowMode      = 'stacked'   # 'stacked' (mode 2) | 'tiled' (mode 1)
+# $config.pgEntry         = $true       # run per-CMDR menu click sets (needs captured coords)
+# $config.launchEDMC      = $false      # companions usually auto-run via Sandboxie RunCommand
+# $config.SeedCredentials = $true
 
-# Timing (milliseconds unless noted)
-# $config.WindowPollInterval         = 3333
-# $config.ProcessWaitInterval        = 3333
-# $config.WindowMoveRetryInterval    = 3333
-# $config.MaxRetries                 = 3
-# $config.EliteWindowSettleSeconds   = 7   # seconds
+# --- Timing ---
+# $config.WindowTimeoutSec    = 120     # per-box bounded wait, then flag & continue
+# $config.WindowPollMs        = 2000
+# $config.EliteSettleSeconds  = 7
+# $config.PgReadyDelaySeconds = 20
 
-# Window positions for alt-monitor Elite clients
-# These are X/Y pixel offsets. Negative values = left/above primary monitor.
-# $eliteWindows is built from $eliteDangerousCmdrs after config loads,
-# so override the $cmdrNames above to control which names appear.
+# --- Sandbox / credential paths ---
+# $config.SandboxRoot   = "C:\Sandbox\$env:USERNAME"
+# $config.CredBackupDir = "$PSScriptRoot\cred_backup"
+
+# --- Per-CMDR menu click sets (mode 2) ---
+# All coordinates are PRIMARY-monitor pixels (mode 2 focuses each window first).
+# Capture them with tools\Get-CursorPos.ps1 (see its header). A CMDR left out of
+# this map has its menu clicks skipped - the launcher never fires blind clicks.
+# The private-group row is per-account (alphabetical order of group memberships),
+# so each CMDR needs its own set.
+# $config.CmdrClickSets = @{
+#     'CMDRBistronaut' = @(
+#         @{ X = 960; Y = 540; ClickType = 'Double' },   # Continue
+#         @{ X = 960; Y = 640; ClickType = 'Double' },   # Private Group
+#         @{ X = 960; Y = 700; ClickType = 'Double' },   # select "Quad PG" (per-account row)
+#         @{ X = 960; Y = 820; ClickType = 'Double' }    # Launch Session
+#     )
+#     # 'CMDRTristronaut' = @( ... )
+#     # 'CMDRQuadstronaut' = @( ... )   # owner: group is remembered, may need one fewer click
+#     # 'CMDRDuvrazh'      = @( ... )
+# }
