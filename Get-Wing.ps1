@@ -1,350 +1,218 @@
 #Requires -Version 5.1
+<#
+.SYNOPSIS
+    EDWing multibox launcher - launches N sandboxed Elite Dangerous clients and arranges them.
 
-# Load external config if present (overrides defaults below)
-$wingConfPath = Join-Path -Path $PSScriptRoot -ChildPath 'wing.conf.ps1'
+.DESCRIPTION
+    For each Sandboxie box / CMDR it: seeds min-ed credentials, launches the client,
+    waits (bounded) for its window, then arranges the windows for one of two modes:
 
-# Default configuration
-$config = @{
-    launchEliteDangerous           = $true
-    skipIntro                      = $true
-    pgEntry                        = $true
-    launchEDEB                     = $false
-    launchEDMC                     = $false
-    pythonPath                     = 'C:\Users\Quadstronaut\scoop\apps\python\current\python.exe'
-    WindowPollInterval             = 3333
-    ProcessWaitInterval            = 3333
-    WindowMoveRetryInterval        = 3333
-    MaxRetries                     = 3
-    StopCustomServicesAndProcesses = $false
-    EliteWindowSettleSeconds       = 7
-    # Credential seeding: back up and restore MinEdLauncher .cred files across sandbox wipes
-    SeedCredentials                = $true
-    SandboxRoot                    = "C:\Sandbox\$env:USERNAME"
-    CredBackupDir                  = "$PSScriptRoot\cred_backup"
-}
+      stacked  all clients borderless full-size on the primary monitor; you or a bot
+               bring the wanted CMDR forward and act, then cycle (mode 2, default)
+      tiled    primary CMDR on the main monitor, the rest tiled on a side monitor (mode 1)
 
-# Commander configuration
-$cmdrNames = @(
-    "CMDRDuvrazh",
-    "CMDRBistronaut",
-    "CMDRTristronaut",
-    "CMDRQuadstronaut"
+    A client that doesn't appear in time (e.g. stuck on a Frontier re-auth prompt) is
+    flagged and SKIPPED - it never hangs the other three.
+
+    Local overrides live in wing.conf.ps1 (gitignored). See example_configs/.
+
+.EXAMPLE
+    .\Get-Wing.ps1                 # stacked (mode 2)
+    .\Get-Wing.ps1 -Mode tiled     # classic tiled layout (mode 1)
+    .\Get-Wing.ps1 -WhatIf         # seed-report + no launch (dry preview)
+#>
+[CmdletBinding()]
+param(
+    [ValidateSet('stacked','tiled')][string]$Mode,
+    [switch]$NoCreds,
+    [switch]$WhatIf
 )
 
-# Executable paths
-$edmc_path = 'G:\EliteApps\EDMarketConnector\EDMarketConnector.exe'
+$ErrorActionPreference = 'Stop'
+$here = $PSScriptRoot
+
+# --- Shared libraries ---
+. "$here\WingLib.ps1"     # window identity / focus / positioning primitives
+. "$here\WingCreds.ps1"   # min-ed credential + settings seeding
+
+# --- Default configuration (override any of these in wing.conf.ps1) ---
+$config = @{
+    launchEliteDangerous           = $true
+    windowMode                     = 'stacked'   # 'stacked' (mode 2) | 'tiled' (mode 1)
+    pgEntry                        = $true        # run per-CMDR menu click sets (needs captured coords)
+    launchEDMC                     = $false       # companions normally auto-run via Sandboxie RunCommand
+    SeedCredentials                = $true
+    StopCustomServicesAndProcesses = $false
+
+    WindowTimeoutSec               = 120          # per-box bounded wait, then flag & continue
+    WindowPollMs                   = 2000
+    EliteSettleSeconds             = 7            # let renderers settle before positioning
+    PgReadyDelaySeconds            = 20           # TODO: replace with a journal readiness signal
+
+    SandboxRoot                    = "C:\Sandbox\$env:USERNAME"
+    CredBackupDir                  = "$here\cred_backup"
+
+    # Per-CMDR menu click sets, in PRIMARY-monitor coordinates (mode 2 focuses each
+    # window first). Capture with tools\Get-CursorPos.ps1 and set these in wing.conf.ps1.
+    # Empty => that CMDR's clicks are skipped (never fires blind clicks at wrong pixels).
+    CmdrClickSets                  = @{}
+}
+
+# Commander boxes. Order = launch order; index i -> min-ed profile Account(i+1).
+# First entry is the "primary" CMDR (main monitor in tiled mode).
+$cmdrNames = @(
+    'CMDRDuvrazh',
+    'CMDRBistronaut',
+    'CMDRTristronaut',
+    'CMDRQuadstronaut'
+)
+
+# Executable paths (override in wing.conf.ps1).
 $sandboxieStart = 'C:\Users\Quadstronaut\scoop\apps\sandboxie-plus-np\current\Start.exe'
-$minEDLauncher = 'G:\SteamLibrary\steamapps\common\Elite Dangerous\MinEdLauncher.exe'
-$edebLauncher = 'G:\EliteApps\EDEB\Elite Dangerous Exploration Buddy.exe'
+$minEDLauncher  = 'G:\SteamLibrary\steamapps\common\Elite Dangerous\MinEdLauncher.exe'
+$edmc_path      = 'G:\EliteApps\EDMarketConnector\EDMarketConnector.exe'
 
-# Apply external config overrides
-if (Test-Path $wingConfPath) {
-    Write-Host "Loading config from $wingConfPath"
-    . $wingConfPath
-}
+# --- Apply local overrides, then command-line params (params win) ---
+$wingConf = Join-Path $here 'wing.conf.ps1'
+if (Test-Path $wingConf) { Write-Host "Loading $wingConf"; . $wingConf }
+if ($Mode)    { $config.windowMode = $Mode }
+if ($NoCreds) { $config.SeedCredentials = $false }
 
-# Alt commanders (all except the first, who plays on the primary monitor)
-$eliteDangerousCmdrs = $cmdrNames | Select-Object -Skip 1
-
-# --- Win32 API Types (loaded once at script scope) ---
-if (-not ([System.Management.Automation.PSTypeName]'User32').Type) {
-    Add-Type -TypeDefinition @"
-        using System;
-        using System.Runtime.InteropServices;
-        public class User32 {
-            [DllImport("user32.dll")]
-            public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-            [DllImport("user32.dll")]
-            public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
-        }
-"@
-}
-
-# --- Functions ---
-
-function Set-WindowPosition {
-    param(
-        [Parameter(Mandatory)]
-        [int]$X,
-
-        [Parameter(Mandatory)]
-        [int]$Y,
-
-        [Parameter(Mandatory)]
-        [ValidateRange(0, [int]::MaxValue)]
-        [int]$Width,
-
-        [Parameter(Mandatory)]
-        [ValidateRange(0, [int]::MaxValue)]
-        [int]$Height,
-
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]$ProcessName,
-
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]$WindowTitle,
-
-        [switch]$Maximize
-    )
-
-    $SWP_NOZORDER = 4
-    $SW_MAXIMIZE = 3
-
-    $process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue |
-        Where-Object { $_.MainWindowTitle -like "*$WindowTitle*" }
-
-    if (-not $process) {
-        Write-Warning "Process '$ProcessName' with title '$WindowTitle' not found. Waiting..."
-        return $false
-    }
-
-    $handle = $process.MainWindowHandle
-    Start-Sleep -Milliseconds 100
-
-    if ($Maximize) {
-        $result = [User32]::ShowWindowAsync($handle, $SW_MAXIMIZE)
-        if ($result) {
-            Write-Host "Maximized window for '$WindowTitle'"
-        }
-        else {
-            Write-Warning "Failed to maximize window for '$WindowTitle'"
-            return $false
-        }
-    }
-    else {
-        $result = [User32]::SetWindowPos($handle, [IntPtr]::Zero, $X, $Y, $Width, $Height, $SWP_NOZORDER)
-        if ($result) {
-            Write-Host "Positioned '$WindowTitle' at X=$X Y=$Y ${Width}x${Height}"
-        }
-        else {
-            Write-Warning "Failed to position window for '$WindowTitle'"
-            return $false
-        }
-    }
-    return $true
-}
-
-# --- Credential Seeding Functions ---
-
-function Get-SandboxCredPath {
-    param([string]$BoxName, [string]$ProfileName)
-    Join-Path $config.SandboxRoot "$BoxName\user\current\AppData\Local\min-ed-launcher\.frontier-$($ProfileName.ToLower()).cred"
-}
-
-function Backup-SandboxCredentials {
-    if (-not (Test-Path $config.CredBackupDir)) {
-        New-Item -ItemType Directory -Path $config.CredBackupDir -Force | Out-Null
-    }
-    for ($i = 0; $i -lt $cmdrNames.Count; $i++) {
-        $profileName = "Account$($i + 1)"
-        $credFile = Get-SandboxCredPath -BoxName $cmdrNames[$i] -ProfileName $profileName
-        $backupFile = Join-Path $config.CredBackupDir ".frontier-$($profileName.ToLower()).cred"
-        if (Test-Path $credFile) {
-            Copy-Item -Path $credFile -Destination $backupFile -Force
-            Write-Host "Backed up credentials for $($cmdrNames[$i]) ($profileName)"
-        }
-    }
-}
-
-function Restore-SandboxCredentials {
-    for ($i = 0; $i -lt $cmdrNames.Count; $i++) {
-        $profileName = "Account$($i + 1)"
-        $backupFile = Join-Path $config.CredBackupDir ".frontier-$($profileName.ToLower()).cred"
-        if (-not (Test-Path $backupFile)) {
-            Write-Warning "No backed-up credentials for $($cmdrNames[$i]) ($profileName) - will need manual login"
-            continue
-        }
-        $credFile = Get-SandboxCredPath -BoxName $cmdrNames[$i] -ProfileName $profileName
-        $credDir = Split-Path $credFile -Parent
-        if (-not (Test-Path $credDir)) {
-            New-Item -ItemType Directory -Path $credDir -Force | Out-Null
-        }
-        Copy-Item -Path $backupFile -Destination $credFile -Force
-        Write-Host "Restored credentials for $($cmdrNames[$i]) ($profileName)"
-    }
-}
-
-# --- Build Window Configuration List ---
-$windowConfigurations = @()
-
-if ($config.launchEliteDangerous) {
-    $eliteWindows = @(
-        @{ Name = $eliteDangerousCmdrs[0]; X = -1080; Y = -387; Width = 800; Height = 600; Moved = $false; RetryCount = 0 },
-        @{ Name = $eliteDangerousCmdrs[1]; X = -1080; Y = 213;  Width = 800; Height = 600; Moved = $false; RetryCount = 0 },
-        @{ Name = $eliteDangerousCmdrs[2]; X = -1080; Y = 813;  Width = 800; Height = 600; Moved = $false; RetryCount = 0 }
-    )
-    $eliteWindows | ForEach-Object {
-        $_.ProcessName = "EliteDangerous64"
-        $_.Maximize = $false
-    }
-    $windowConfigurations += $eliteWindows
-}
-
-if ($config.launchEDEB) {
-    if (-not (Test-Path $edebLauncher)) {
-        Write-Warning "EDEB launcher not found at $edebLauncher - skipping"
-    }
-    else {
-        & $edebLauncher
-        $edebWindows = @(
-            @{ ProcessName = "Elite Dangerous Exploration Buddy"; Name = $cmdrNames[0]; X = 0; Y = 0; Width = 800; Height = 600; Maximize = $true; Moved = $false; RetryCount = 0 }
-        )
-        $windowConfigurations += $edebWindows
-    }
-}
-
-if ($config.launchEDMC) {
-    $edmcWindows = @(
-        @{ Name = $cmdrNames[0]; X = 100;  Y = 100;  Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
-        @{ Name = $cmdrNames[1]; X = -280; Y = -387; Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
-        @{ Name = $cmdrNames[2]; X = -280; Y = 213;  Width = 300; Height = 600; Moved = $false; RetryCount = 0 },
-        @{ Name = $cmdrNames[3]; X = -280; Y = 813;  Width = 300; Height = 600; Moved = $false; RetryCount = 0 }
-    )
-    $edmcWindows | ForEach-Object {
-        $_.ProcessName = "EDMarketConnector"
-        $_.Maximize = $false
-    }
-    $windowConfigurations += $edmcWindows
-}
-
-# --- Validate Required Executables ---
-$missingPaths = @()
-if (-not (Test-Path $sandboxieStart)) { $missingPaths += "Sandboxie: $sandboxieStart" }
-if ($config.launchEliteDangerous -and -not (Test-Path $minEDLauncher)) { $missingPaths += "MinEdLauncher: $minEDLauncher" }
-if ($config.launchEDMC -and -not (Test-Path $edmc_path)) { $missingPaths += "EDMC: $edmc_path" }
-
-if ($missingPaths.Count -gt 0) {
+# --- Validate executables (only what's enabled) ---
+$missing = @()
+if (-not (Test-Path $sandboxieStart)) { $missing += "Sandboxie Start.exe: $sandboxieStart" }
+if ($config.launchEliteDangerous -and -not (Test-Path $minEDLauncher)) { $missing += "MinEdLauncher: $minEDLauncher" }
+if ($config.launchEDMC -and -not (Test-Path $edmc_path)) { $missing += "EDMC: $edmc_path" }
+if ($missing.Count) {
     Write-Error "Missing required executables:"
-    $missingPaths | ForEach-Object { Write-Host "  - $_" }
+    $missing | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
     return
 }
 
-# --- Stop Custom Processes ---
-if ($config.StopCustomServicesAndProcesses) {
-    $processesToStop = @("*battle.net*", "*epic*", "*gog*", "*steam*", "*discord*", "*ollama*")
-    Get-Process -Name $processesToStop -ErrorAction SilentlyContinue | Stop-Process -Force
-    Get-ScheduledTask 'Syncthing' -ErrorAction SilentlyContinue | Stop-ScheduledTask
-    Get-Service -Name "Everything", "Filezilla Server" -ErrorAction SilentlyContinue | Stop-Service
-}
+# --- Tiled layout helper (mode 1): primary CMDR on main monitor, rest on a side monitor,
+#     with rects derived from the LIVE monitor list instead of baked pixel constants. ---
+function Set-WingTiledLayout {
+    param(
+        [Parameter(Mandatory)][object[]]$Ready,
+        [Parameter(Mandatory)][string]$PrimaryCmdr
+    )
+    $layout  = Get-WingMonitorLayout
+    $primary = $layout | Where-Object Primary | Select-Object -First 1
+    $side    = $layout | Where-Object { -not $_.Primary } | Sort-Object X | Select-Object -First 1  # leftmost non-primary
 
-# --- Credential Seeding Phase ---
-if ($config.SeedCredentials) {
-    # Back up any existing .cred files before they could be lost
-    Backup-SandboxCredentials
-    # Restore into sandbox filesystem (creates dirs if sandbox was wiped)
-    Restore-SandboxCredentials
-}
+    $primWin = $Ready | Where-Object { $_.Box -eq $PrimaryCmdr } | Select-Object -First 1
+    if ($primWin) {
+        Set-CmdrWindowRect -Hwnd $primWin.Hwnd -X $primary.X -Y $primary.Y -Width $primary.Width -Height $primary.Height | Out-Null
+        Write-Host "  $($primWin.Box) -> main monitor (full)"
+    }
 
-# --- Launch Phase ---
-Write-Host "Starting Elite Dangerous multibox"
-
-for ($i = 0; $i -lt $cmdrNames.Count; $i++) {
-    $boxName = $cmdrNames[$i]
-    $arguments = "/box:$boxName `"$minEDLauncher`" /frontier Account$($i+1) /edo /autorun /autoquit /skipInstallPrompt"
-    Start-Process -FilePath $sandboxieStart -ArgumentList $arguments
-    Write-Host "Launched $boxName in sandbox"
-
-    if ($config.launchEDMC) {
-        $arguments = "/box:$boxName `"$edmc_path`""
-        Start-Process -FilePath $sandboxieStart -ArgumentList $arguments
-        Write-Host "Launched EDMC in sandbox $boxName"
+    $others = @($Ready | Where-Object { $_.Box -ne $PrimaryCmdr })
+    if (-not $side) { Write-Warning "  No side monitor found; alt clients left unplaced."; return }
+    if (-not $others) { return }
+    $rowH = [int]($side.Height / $others.Count)
+    for ($k = 0; $k -lt $others.Count; $k++) {
+        $y = $side.Y + $k * $rowH
+        Set-CmdrWindowRect -Hwnd $others[$k].Hwnd -X $side.X -Y $y -Width $side.Width -Height $rowH -Borderless | Out-Null
+        Write-Host ("  {0} -> side {1},{2} {3}x{4}" -f $others[$k].Box, $side.X, $y, $side.Width, $rowH)
     }
 }
 
-# --- Window Detection Phase ---
-if ($windowConfigurations.Count -eq 0) {
-    Write-Host "No windows to manage - skipping detection and positioning"
+# Bring a specific CMDR's window to the foreground (mode-2 primitive; the ED-AFK seam).
+function Show-Cmdr {
+    param([Parameter(Mandatory)][string]$Box)
+    $w = Get-CmdrWindows -BoxNames $cmdrNames | Where-Object { $_.Box -eq $Box } | Select-Object -First 1
+    if (-not $w) { Write-Warning "No window found for $Box"; return $false }
+    return (Set-CmdrForeground -Hwnd $w.Hwnd)
 }
-else {
-    Write-Host "`nWaiting for application windows to load..."
 
-    $previousCount = -1
-    do {
-        $windowsFoundCount = 0
-        foreach ($window in $windowConfigurations) {
-            $process = Get-Process -Name $window.ProcessName -ErrorAction SilentlyContinue |
-                Where-Object { $_.MainWindowTitle -like "*$($window.Name)*" }
-            if ($process) { $windowsFoundCount++ }
+# --- Optionally free resources ---
+if ($config.StopCustomServicesAndProcesses -and -not $WhatIf) {
+    Get-Process -Name '*discord*','*ollama*' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+}
+
+# --- Credential phase ---
+if ($config.SeedCredentials) {
+    Write-Host "`n=== Credentials ===" -ForegroundColor Cyan
+    Invoke-WingCredentialSeeding -CmdrNames $cmdrNames -SandboxRoot $config.SandboxRoot `
+        -CredBackupDir $config.CredBackupDir -WhatIfSeed:$WhatIf | Out-Null
+}
+
+if ($WhatIf) { Write-Host "`n-WhatIf: stopping before launch." -ForegroundColor Yellow; return }
+
+# --- Launch phase ---
+if ($config.launchEliteDangerous) {
+    Write-Host "`n=== Launching $($cmdrNames.Count) sandboxed clients ($($config.windowMode)) ===" -ForegroundColor Cyan
+    for ($i = 0; $i -lt $cmdrNames.Count; $i++) {
+        $box         = $cmdrNames[$i]
+        $profileName = "Account$($i + 1)"
+        $sbArgs      = "/box:$box `"$minEDLauncher`" /frontier $profileName /edo /autorun /autoquit /skipInstallPrompt"
+        Start-Process -FilePath $sandboxieStart -ArgumentList $sbArgs
+        Write-Host "  launched $box ($profileName)"
+        if ($config.launchEDMC) {
+            Start-Process -FilePath $sandboxieStart -ArgumentList "/box:$box `"$edmc_path`""
         }
+    }
+}
 
-        if ($windowsFoundCount -ne $previousCount) {
-            Write-Host "Found $windowsFoundCount of $($windowConfigurations.Count)"
-            $previousCount = $windowsFoundCount
+# --- Detect (bounded) + arrange ---
+if ($config.launchEliteDangerous) {
+    Write-Host "`n=== Waiting for windows (<= $($config.WindowTimeoutSec)s each) ===" -ForegroundColor Cyan
+    $ready = @(); $notReady = @()
+    foreach ($box in $cmdrNames) {
+        $win = Wait-CmdrWindow -BoxName $box -TimeoutSec $config.WindowTimeoutSec -PollMs $config.WindowPollMs
+        if ($win) {
+            Write-Host ("  {0} ready (hwnd 0x{1:X})" -f $box, $win.Hwnd) -ForegroundColor Green
+            $ready += $win
         }
-
-        if ($windowsFoundCount -lt $windowConfigurations.Count) {
-            Start-Sleep -Milliseconds $config.WindowPollInterval
+        else {
+            Write-Warning "  $box did not appear in $($config.WindowTimeoutSec)s - likely stuck at login / needs a re-auth code. Continuing with the rest."
+            $notReady += $box
         }
-    } until ($windowsFoundCount -eq $windowConfigurations.Count)
+    }
 
-    # --- Window Positioning Phase ---
-    Write-Host "`nAll windows detected. Beginning positioning..."
-
-    $eliteSettled = $false
-    do {
-        foreach ($window in $windowConfigurations) {
-            if ($window.Moved) { continue }
-
-            # Wait for process to appear
-            do {
-                $process = Get-Process -Name $window.ProcessName -ErrorAction SilentlyContinue |
-                    Where-Object { $_.MainWindowTitle -like "*$($window.Name)*" }
-                if (-not $process) {
-                    Start-Sleep -Milliseconds $config.ProcessWaitInterval
-                }
-            } while (-not $process)
-
-            # Elite instances need extra time to finish loading their renderer
-            if ($window.ProcessName -eq "EliteDangerous64" -and -not $eliteSettled) {
-                Write-Host "Waiting $($config.EliteWindowSettleSeconds)s for Elite windows to settle..."
-                Start-Sleep -Seconds $config.EliteWindowSettleSeconds
-                $eliteSettled = $true
-            }
-
-            # Attempt positioning with retry logic
-            if ($window.RetryCount -lt $config.MaxRetries) {
-                $positioned = Set-WindowPosition `
-                    -ProcessName $window.ProcessName `
-                    -WindowTitle $window.Name `
-                    -X $window.X -Y $window.Y `
-                    -Width $window.Width -Height $window.Height `
-                    -Maximize:([bool]$window.Maximize)
-
-                if ($positioned) {
-                    $window.Moved = $true
-                }
-                else {
-                    $window.RetryCount++
-                    Write-Host "Retry $($window.RetryCount)/$($config.MaxRetries) for $($window.Name)"
+    if ($ready) {
+        Start-Sleep -Seconds $config.EliteSettleSeconds
+        Write-Host "`n=== Arranging ($($config.windowMode)) ===" -ForegroundColor Cyan
+        switch ($config.windowMode) {
+            'stacked' {
+                $p = Get-WingPrimaryRect
+                Write-Host "  stacking $($ready.Count) clients on primary ($($p.Width)x$($p.Height))"
+                foreach ($w in $ready) {
+                    $ok = Set-CmdrWindowRect -Hwnd $w.Hwnd -X $p.X -Y $p.Y -Width $p.Width -Height $p.Height -Borderless
+                    Write-Host ("    {0}: {1}" -f $w.Box, $(if ($ok) { 'placed' } else { 'FAILED' }))
                 }
             }
-            else {
-                Write-Warning "Failed to position $($window.Name) after $($config.MaxRetries) attempts. Skipping."
-                $window.Moved = $true
-            }
+            'tiled' { Set-WingTiledLayout -Ready $ready -PrimaryCmdr $cmdrNames[0] }
         }
+    }
 
-        Start-Sleep -Milliseconds $config.WindowMoveRetryInterval
-    } until (($windowConfigurations | Where-Object { -not $_.Moved }).Count -eq 0)
+    # --- Menu automation (cutscene skip + Continue/PG/Launch), mode-2 style ---
+    # For each ready CMDR: focus its window, then run its captured click set. Coords are
+    # display-specific; a box with no captured set is skipped (never fires blind clicks).
+    if ($config.pgEntry -and $ready) {
+        Write-Host "`n=== Menu automation ===" -ForegroundColor Cyan
+        . "$here\clicker_scripts\MouseUtil.ps1"
+        Start-Sleep -Seconds $config.PgReadyDelaySeconds   # TODO: gate on a journal readiness signal
+        foreach ($w in $ready) {
+            $set = $config.CmdrClickSets[$w.Box]
+            if (-not $set) {
+                Write-Warning "  $($w.Box): no click set captured - skipping (see tools\Get-CursorPos.ps1)"
+                continue
+            }
+            if (-not (Set-CmdrForeground -Hwnd $w.Hwnd)) {
+                Write-Warning "  $($w.Box): could not bring to foreground - skipping its clicks"
+                continue
+            }
+            Start-Sleep -Milliseconds 400
+            foreach ($c in $set) {
+                Invoke-ClickAction -X $c.X -Y $c.Y -ClickType $(if ($c.ClickType) { $c.ClickType } else { 'Double' })
+            }
+            Write-Host "  $($w.Box): ran $($set.Count) clicks"
+        }
+    }
 
-    Write-Host "`nWindow positioning complete!"
-}
-
-# --- Post-Launch Automation ---
-if ($config.skipIntro) {
-    $skipIntro_scriptPath = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\cutscene.ps1'
-    & $skipIntro_scriptPath
-    $introSkipped = $true
-}
-else {
-    $introSkipped = $false
-}
-
-if ($config.pgEntry -and $introSkipped) {
-    Start-Sleep -Seconds 20
-    $pgEntry_scriptPath = Join-Path -Path $PSScriptRoot -ChildPath 'clicker_scripts\continue-pg.ps1'
-    & $pgEntry_scriptPath
+    Write-Host "`n=== Summary ===" -ForegroundColor Cyan
+    Write-Host ("  ready:  {0}" -f (($ready.Box) -join ', '))
+    if ($notReady) { Write-Host ("  needs attention (login/re-auth): {0}" -f ($notReady -join ', ')) -ForegroundColor Yellow }
+    Write-Host "`nTip: bring a CMDR forward any time with:  Show-Cmdr -Box CMDRBistronaut" -ForegroundColor DarkGray
 }
