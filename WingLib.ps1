@@ -1,5 +1,5 @@
 # WingLib.ps1 - Core window identity / focus / positioning primitives for EDWing.
-# Dot-source from the launcher:  . "$PSScriptRoot\lib\WingLib.ps1"
+# Dot-source from the launcher:  . "$PSScriptRoot\WingLib.ps1"
 #
 # Why this exists: the old launcher matched Elite windows by the game's title, which
 # is the CMDR-less "Elite - Dangerous (CLIENT)" and can match several processes at
@@ -27,7 +27,10 @@ public class WingWin32 {
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
-    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int n);
+    // ShowWindowAsync POSTS the show request (non-blocking) instead of SendMessage-ing it,
+    // so a target ED thread that isn't pumping its queue (loading screen, re-auth modal,
+    // fullscreen transition) can't block our single launcher thread. See review rank 2.
+    [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr h, int n);
     [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
     [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
@@ -46,9 +49,12 @@ public class WingWin32 {
     const uint SWP_FRAMECHANGED = 0x0020;
     const uint SWP_SHOWWINDOW   = 0x0040;
     const uint SWP_NOZORDER     = 0x0004;
+    const uint SWP_NOACTIVATE   = 0x0010;   // position without stealing focus (review rank 7)
     const int SW_RESTORE = 9;
 
     public struct WinInfo { public long Hwnd; public uint Pid; public string Title; public bool Visible; }
+
+    public static long ForegroundHwnd() { return GetForegroundWindow().ToInt64(); }
 
     // Every top-level window owned by a PID (there can be more than one; caller filters).
     public static WinInfo[] WindowsForPid(uint pid) {
@@ -79,7 +85,7 @@ public class WingWin32 {
     // uses internally). Returns true only if the window actually became foreground.
     public static bool ForceForeground(long hwnd) {
         IntPtr h = new IntPtr(hwnd);
-        ShowWindow(h, SW_RESTORE);
+        ShowWindowAsync(h, SW_RESTORE);
         IntPtr fore = GetForegroundWindow();
         uint foreThread; GetWindowThreadProcessId(fore, out foreThread);
         uint thisThread = GetCurrentThreadId();
@@ -91,18 +97,20 @@ public class WingWin32 {
         return GetForegroundWindow() == h;
     }
 
-    // Position/size a window. Borderless strips the caption+frame first (for mode-2
-    // full-screen stacking); otherwise a plain move/size that leaves z-order alone.
+    // Position/size a window WITHOUT activating it (mode-2 stacking must not fight for
+    // focus). Borderless strips the caption+frame first (a no-op if the game is already
+    // in Borderless display mode). Note: we deliberately never re-add caption bits - a
+    // game legitimately in Borderless mode must not sprout a title bar (review rank 12).
     public static bool SetRect(long hwnd, int x, int y, int w, int h, bool borderless) {
         IntPtr hh = new IntPtr(hwnd);
-        ShowWindow(hh, SW_RESTORE);
+        ShowWindowAsync(hh, SW_RESTORE);
         if (borderless) {
             long style = GetStyle(hh);
             style &= ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
             SetStyle(hh, style);
-            return SetWindowPos(hh, HWND_TOP, x, y, w, h, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+            return SetWindowPos(hh, HWND_TOP, x, y, w, h, SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
         }
-        return SetWindowPos(hh, HWND_TOP, x, y, w, h, SWP_NOZORDER | SWP_SHOWWINDOW);
+        return SetWindowPos(hh, HWND_TOP, x, y, w, h, SWP_NOZORDER | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     }
 }
 '@
@@ -112,6 +120,8 @@ public class WingWin32 {
 
 # Return one object per visible Elite window: Box (derived from the Sandboxie title tag),
 # Pid, Hwnd, Title. Untagged windows (a native/unsandboxed client) come back with Box=$null.
+# When several box names match a title (a future name that is a substring of another), the
+# LONGEST match wins so a prefix name can't steal a longer box's window (review rank 13).
 function Get-CmdrWindows {
     [CmdletBinding()]
     param(
@@ -123,10 +133,8 @@ function Get-CmdrWindows {
         foreach ($w in [WingWin32]::WindowsForPid([uint32]$p.Id)) {
             if (-not $w.Visible) { continue }                       # skip IME/helper windows
             if ([string]::IsNullOrWhiteSpace($w.Title)) { continue }
-            $box = $null
-            foreach ($b in $BoxNames) {
-                if ($w.Title -like "*$b*") { $box = $b; break }     # match box-name substring, bracket-format tolerant
-            }
+            $hits = @($BoxNames | Where-Object { $w.Title -like "*$_*" })
+            $box  = if ($hits) { $hits | Sort-Object { $_.Length } -Descending | Select-Object -First 1 } else { $null }
             $out += [pscustomobject]@{
                 Box = $box; Pid = [int]$w.Pid; Hwnd = [long]$w.Hwnd; Title = $w.Title
             }
@@ -135,8 +143,7 @@ function Get-CmdrWindows {
     return $out
 }
 
-# Bounded wait for one box's window. Returns the window object, or $null on timeout
-# (caller treats a timeout as "that CMDR didn't come up - likely needs a re-auth code").
+# Bounded wait for ONE box's window. Returns the window object, or $null on timeout.
 function Wait-CmdrWindow {
     [CmdletBinding()]
     param(
@@ -153,6 +160,36 @@ function Wait-CmdrWindow {
         Start-Sleep -Milliseconds $PollMs
     } while ((Get-Date) -lt $deadline)
     return $null
+}
+
+# Bounded wait for MANY boxes CONCURRENTLY: one shared poll retires each box as it appears,
+# so total wait is bounded by the single largest timeout, not the sum (review rank 9).
+# Returns @{ Ready = <window objects>; NotReady = <box names that timed out> }.
+function Wait-AllCmdrWindows {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string[]]$BoxNames,
+        [int]$TimeoutSec = 120,
+        [int]$PollMs     = 2000,
+        [string]$ProcessName = 'EliteDangerous64'
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $ready = @{}
+    do {
+        $wins = Get-CmdrWindows -ProcessName $ProcessName -BoxNames $BoxNames
+        foreach ($b in $BoxNames) {
+            if ($ready.ContainsKey($b)) { continue }
+            $w = $wins | Where-Object { $_.Box -eq $b } | Select-Object -First 1
+            if ($w) { $ready[$b] = $w; Write-Host ("  {0} ready (hwnd 0x{1:X})" -f $b, $w.Hwnd) -ForegroundColor Green }
+        }
+        if ($ready.Count -lt $BoxNames.Count) { Start-Sleep -Milliseconds $PollMs }
+    } while ($ready.Count -lt $BoxNames.Count -and (Get-Date) -lt $deadline)
+
+    $readyList = @(); $notReady = @()
+    foreach ($b in $BoxNames) {
+        if ($ready.ContainsKey($b)) { $readyList += $ready[$b] } else { $notReady += $b }
+    }
+    return [pscustomobject]@{ Ready = $readyList; NotReady = $notReady }
 }
 
 # --- Monitors ---
@@ -198,11 +235,16 @@ function Set-CmdrWindowRect {
     return [WingWin32]::SetRect($Hwnd, $X, $Y, $Width, $Height, [bool]$Borderless)
 }
 
+# Currently-foreground HWND, for verifying a focus attempt actually took (review rank 5).
+function Get-ForegroundHwnd {
+    return [long][WingWin32]::ForegroundHwnd()
+}
+
 # --- Self-test ---
 
 # Read-only by default: enumerates Elite windows + monitors and prints what it sees.
-# -TestFocus / -TestMove exercise the disruptive primitives; leave them off while a
-# live game session is running.
+# -TestFocus / -TestMove exercise the disruptive primitives - and are HARD-GUARDED to
+# only ever touch a Box-TAGGED (sandboxed) window, never the live/native ED (review rank 1).
 function Invoke-WingSelfTest {
     [CmdletBinding()]
     param(
@@ -218,17 +260,22 @@ function Invoke-WingSelfTest {
     if (-not $wins) { Write-Host "  (none running)" }
     else { $wins | Format-Table Box, Pid, @{n='Hwnd';e={'0x{0:X}' -f $_.Hwnd}}, Title -AutoSize | Out-String | Write-Host }
 
-    if ($TestFocus -and $wins) {
-        $t = $wins | Select-Object -First 1
-        $label = if ($t.Box) { $t.Box } else { $t.Title }
-        Write-Host "Focus test -> $label" -ForegroundColor Yellow
-        Write-Host ("  ForceForeground returned: {0}" -f (Set-CmdrForeground -Hwnd $t.Hwnd))
-    }
-    if ($TestMove -and $wins) {
-        $r = Get-WingPrimaryRect
-        $t = $wins | Select-Object -First 1
-        Write-Host "Move test -> primary rect $($r.Width)x$($r.Height)" -ForegroundColor Yellow
-        Write-Host ("  SetRect returned: {0}" -f (Set-CmdrWindowRect -Hwnd $t.Hwnd -X $r.X -Y $r.Y -Width $r.Width -Height $r.Height))
+    if ($TestFocus -or $TestMove) {
+        # NEVER select an untagged (native/unsandboxed) window as a test target.
+        $t = $wins | Where-Object { $_.Box } | Select-Object -First 1
+        if (-not $t) {
+            Write-Warning "No sandboxed (box-tagged) CMDR window found - refusing to focus/move an untagged/native window."
+            return $wins
+        }
+        if ($TestFocus) {
+            Write-Host "Focus test -> $($t.Box)" -ForegroundColor Yellow
+            Write-Host ("  ForceForeground returned: {0}" -f (Set-CmdrForeground -Hwnd $t.Hwnd))
+        }
+        if ($TestMove) {
+            $r = Get-WingPrimaryRect
+            Write-Host "Move test -> $($t.Box) to primary $($r.Width)x$($r.Height)" -ForegroundColor Yellow
+            Write-Host ("  SetRect returned: {0}" -f (Set-CmdrWindowRect -Hwnd $t.Hwnd -X $r.X -Y $r.Y -Width $r.Width -Height $r.Height))
+        }
     }
     return $wins
 }
